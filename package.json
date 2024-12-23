@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "redis": "^4.7.0"
   },
   "scripts": {
     "build": "bun build ./src/client.tsx --outdir ./public",

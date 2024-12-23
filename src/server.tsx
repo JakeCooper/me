@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { Counter } from "./components/Counter";
-import { WebSocket as WSClient } from "ws";
+import { createClient } from 'redis';
 
 // Types
 interface RegionState {
@@ -9,108 +9,87 @@ interface RegionState {
   lastUpdate: string;
 }
 
-// Shared state
-const regions = new Map<string, RegionState>();
-const clients = new Set<WebSocket>();
-const peerConnections = new Map<string, WSClient>();
+// All known regions
+const REGIONS = [
+  'us-west2',
+  'us-east1', 
+  'asia-southeast',
+  'europe-west'
+];
 
 const REGION = process.env.RAILWAY_REPLICA_REGION || "unknown-region";
 
-// Update the PEERS definition and initialization in server.tsx
-const REGIONS = {
-  "us-west2": "ws://us-west.railway.internal:3000",
-  "us-east1": "ws://us-east.railway.internal:3000"
-};
+// Create Redis clients for all regions
+const redisClients = new Map<string, ReturnType<typeof createClient>>();
 
-// Initialize all known regions with 0 counts
-Object.keys(REGIONS).forEach(region => {
-  if (!regions.has(region)) {
-    regions.set(region, { 
-      count: 0, 
-      lastUpdate: new Date().toISOString() // Use ISO string format
-    });
+REGIONS.forEach(region => {
+  const envVar = `REDIS_${region.toUpperCase().replace('-', '_')}_URL`;
+  const url = process.env[envVar];
+  if (url) {
+    const client = createClient({ url });
+    redisClients.set(region, client);
+    // Connect to Redis
+    client.connect().catch(error => 
+      console.error(`Failed to connect to Redis for ${region}:`, error)
+    );
   }
 });
 
-// Filter out our own region from the peers list
-const PEER_URLS = Object.entries(REGIONS)
-  .filter(([region]) => region !== REGION)
-  .map(([_, url]) => url);
-
-
-// Initialize our region
-regions.set(REGION, { count: 0, lastUpdate: Date.now().toLocaleString() });
-
-// Function to broadcast current state to all WebSocket clients
-function broadcastToClients() {
-  const state = Array.from(regions.entries()).map(([region, data]) => ({
-    region,
-    count: data.count,
-    lastUpdate: data.lastUpdate
-  }));
+// Get counts from all Redis instances
+async function getAllCounts(): Promise<RegionState[]> {
+  const counts: RegionState[] = [];
   
-  const message = JSON.stringify({ type: "state", regions: state });
-  clients.forEach(client => client.send(message));
-}
-
-// Function to connect to a peer region
-function connectToPeer(peerUrl: string) {
-  if (peerConnections.has(peerUrl)) {
-    return; // Already connected
-  }
-
-  console.log(`[${REGION}] Attempting to connect to peer: ${peerUrl}`);
-  const ws = new WSClient(peerUrl);
-  peerConnections.set(peerUrl, ws);
-
-  ws.on('error', (error) => {
-    console.error(`[${REGION}] Error connecting to peer ${peerUrl}:`, error.message);
-    peerConnections.delete(peerUrl);
-  });
-
-  ws.on('open', () => {
-    console.log(`[${REGION}] Connected to peer: ${peerUrl}`);
-    // Request current state
-    ws.send(JSON.stringify({ type: "sync_request" }));
-  });
-
-  ws.on('message', (data) => {
+  for (const [region, client] of redisClients.entries()) {
     try {
-      console.log(`[${REGION}] Received message from ${peerUrl}:`, data.toString().slice(0, 100) + '...');
-      const message = JSON.parse(data.toString());
-      if (message.type === "sync" || message.type === "update") {
-        const { region, count, lastUpdate } = message;
-        const current = regions.get(region);
-        if (!current || current.lastUpdate < lastUpdate) {
-          regions.set(region, { count, lastUpdate });
-          // Broadcast to all clients
-          broadcastToClients();
-        }
-      } else if (message.type === "sync_request") {
-        // Send our entire state
-        const state = Array.from(regions.entries()).map(([region, data]) => ({
-          type: "sync",
-          region,
-          count: data.count,
-          lastUpdate: data.lastUpdate
-        }));
-        ws.send(JSON.stringify(state));
-      }
-    } catch (e) {
-      console.error(`[${REGION}] Error processing peer message:`, e);
+      const value = await client.get(`counter:${region}`) || '0';
+      counts.push({
+        region,
+        count: parseInt(value, 10),
+        lastUpdate: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`Error getting count for ${region}:`, error);
+      counts.push({
+        region,
+        count: 0,
+        lastUpdate: new Date().toISOString()
+      });
     }
-  });
-
-  ws.on('close', () => {
-    console.log(`[${REGION}] Disconnected from peer: ${peerUrl}`);
-    peerConnections.delete(peerUrl);
-    // Try to reconnect after a delay
-    setTimeout(() => connectToPeer(peerUrl), 5000);
-  });
+  }
+  
+  return counts;
 }
 
-// Connect to all peers
-PEER_URLS.forEach(connectToPeer);
+// Increment counter for current region
+async function incrementCounter(): Promise<number> {
+  const client = redisClients.get(REGION);
+  if (!client) throw new Error(`No Redis client for ${REGION}`);
+  
+  const key = `counter:${REGION}`;
+  const newValue = await client.incr(key);
+  return newValue;
+}
+
+// Connected WebSocket clients for updates
+const clients = new Set<WebSocket>();
+
+// Broadcast current state to all connected clients
+async function broadcastToClients() {
+  try {
+    const regions = await getAllCounts();
+    const message = JSON.stringify({ type: "state", regions });
+    clients.forEach(client => client.send(message));
+  } catch (error) {
+    console.error('Error broadcasting to clients:', error);
+  }
+}
+
+// Start a periodic sync to keep all clients up to date
+setInterval(() => {
+  if (clients.size > 0) {
+    broadcastToClients();
+  }
+}, 1000); // Sync every second
 
 const server = Bun.serve({
   port: 3000,
@@ -139,77 +118,47 @@ const server = Bun.serve({
       });
     }
 
-    // Get all regions for initial state
-    const initialRegions = Array.from(regions.entries()).map(([region, data]) => ({
-      region,
-      count: data.count,
-      lastUpdate: data.lastUpdate
-    }));
-
     // Server-side render
-    const content = renderToString(<Counter regions={initialRegions} currentRegion={REGION} />);
-    
-    return new Response(
-      `<!DOCTYPE html>
-        <html>
-          <head>
-            <title>Global Counter Network - ${REGION}</title>
-            <script src="/client.js" type="module" defer></script>
-          </head>
-          <body>
-            <div id="root">${content}</div>
-            <script>
-              window.__INITIAL_DATA__ = {
-                regions: ${JSON.stringify(initialRegions)},
-                currentRegion: "${REGION}"
-              };
-            </script>
-          </body>
-        </html>`,
-      {
-        headers: { "Content-Type": "text/html" },
-      }
-    );
+    return getAllCounts().then(regions => {
+      const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
+      
+      return new Response(
+        `<!DOCTYPE html>
+          <html>
+            <head>
+              <title>Global Counter Network - ${REGION}</title>
+              <script src="/client.js" type="module" defer></script>
+            </head>
+            <body>
+              <div id="root">${content}</div>
+              <script>
+                window.__INITIAL_DATA__ = {
+                  regions: ${JSON.stringify(regions)},
+                  currentRegion: "${REGION}"
+                };
+              </script>
+            </body>
+          </html>`,
+        {
+          headers: { "Content-Type": "text/html" },
+        }
+      );
+    });
   },
   websocket: {
     open(ws) {
       clients.add(ws);
-      // Send current state to new client
       broadcastToClients();
     },
     close(ws) {
       clients.delete(ws);
     },
-    message(ws, message) {
+    async message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
         if (data.type === "increment") {
-          const region = regions.get(REGION)!;
-          region.count++;
-          region.lastUpdate = new Date().toISOString();
-          regions.set(REGION, region);
-          
-          // Broadcast to all clients
-          broadcastToClients();
-          
-          // Broadcast to all peers using persistent connections
-          const update = JSON.stringify({
-            type: "update",
-            region: REGION,
-            count: region.count,
-            lastUpdate: region.lastUpdate
-          });
-          
-          // Send to all connected peers
-          peerConnections.forEach((peerWs, url) => {
-            if (peerWs.readyState === peerWs.OPEN) {
-              peerWs.send(update);
-            } else {
-              console.log(`[${REGION}] Peer connection to ${url} not ready, reconnecting...`);
-              peerConnections.delete(url);
-              connectToPeer(url);
-            }
-          });
+          await incrementCounter();
+          await broadcastToClients();
         }
       } catch (e) {
         console.error("Error processing message:", e);
@@ -219,4 +168,4 @@ const server = Bun.serve({
 });
 
 console.log(`Server running at http://localhost:${server.port} (${REGION})`);
-console.log(`Connected to peers: ${PEER_URLS.join(", ") || "none"}`);
+console.log(`Connected to Redis instances: ${Array.from(redisClients.keys()).join(", ")}`);
