@@ -1,7 +1,7 @@
 import React from "react";
 import { hydrateRoot } from "react-dom/client";
 import { Counter } from "./components/Counter";
-import type { RegionData } from "./components/Counter";
+import type { RegionData } from "./types";
 
 declare global {
   interface Window {
