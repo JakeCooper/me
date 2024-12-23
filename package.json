@@ -1,0 +1,20 @@
+{
+  "name": "justjake.me",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/react-dom": "^19.0.2",
+    "react": "^19.1.0-canary-de82912e-20241220",
+    "react-dom": "^19.1.0-canary-de82912e-20241220"
+  },
+  "scripts": {
+    "build": "bun build ./src/client.tsx --outdir ./public --watch",
+    "dev": "bun --watch src/server.tsx"
+  }
+}
