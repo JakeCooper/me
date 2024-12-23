@@ -143,7 +143,7 @@ const clients = new Set<WebSocket>();
 
 const server = Bun.serve({
   port: 3000,
-  fetch(req) {
+  async fetch(req) {
     const url = new URL(req.url);
 
     // Handle WebSocket upgrade
@@ -153,6 +153,11 @@ const server = Bun.serve({
         return new Response("WebSocket upgrade failed", { status: 400 });
       }
       return undefined;
+    }
+
+    // Increment counter on any HTTP request (except for client.js)
+    if (url.pathname !== '/client.js') {
+      await incrementCounter();
     }
 
     // Serve client bundle
@@ -169,31 +174,30 @@ const server = Bun.serve({
     }
 
     // Server-side render
-    return getAllCounts().then(regions => {
-      const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
-      
-      return new Response(
-        `<!DOCTYPE html>
-          <html>
-            <head>
-              <title>Global Counter Network - ${REGION}</title>
-              <script src="/client.js" type="module" defer></script>
-            </head>
-            <body>
-              <div id="root">${content}</div>
-              <script>
-                window.__INITIAL_DATA__ = {
-                  regions: ${JSON.stringify(regions)},
-                  currentRegion: "${REGION}"
-                };
-              </script>
-            </body>
-          </html>`,
-        {
-          headers: { "Content-Type": "text/html" },
-        }
-      );
-    });
+    const regions = await getAllCounts();
+    const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
+    
+    return new Response(
+      `<!DOCTYPE html>
+        <html>
+          <head>
+            <title>Global Counter Network - ${REGION}</title>
+            <script src="/client.js" type="module" defer></script>
+          </head>
+          <body>
+            <div id="root">${content}</div>
+            <script>
+              window.__INITIAL_DATA__ = {
+                regions: ${JSON.stringify(regions)},
+                currentRegion: "${REGION}"
+              };
+            </script>
+          </body>
+        </html>`,
+      {
+        headers: { "Content-Type": "text/html" },
+      }
+    );
   },
   websocket: {
     open(ws) {
