@@ -15,10 +15,10 @@ const REGION = process.env.RAILWAY_REPLICA_REGION || "unknown-region";
 
 // Region to Redis URL mapping
 const REDIS_MAPPING = {
-  'us-west2': process.env.REDIS_WEST_URL,
-  'us-east1': process.env.REDIS_EAST_URL,
-  'asia-southeast': process.env.REDIS_ASIA_URL,
-  'europe-west': process.env.REDIS_EUROPE_URL
+  'us-west1': process.env.REDIS_WEST_URL,
+  'us-east4': process.env.REDIS_EAST_URL,
+  'asia-southeast1': process.env.REDIS_ASIA_URL,
+  'europe-west4': process.env.REDIS_EUROPE_URL
 };
 
 // Create Redis clients for all regions
