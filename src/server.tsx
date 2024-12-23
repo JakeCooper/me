@@ -22,16 +22,23 @@ const REGION = process.env.RAILWAY_REPLICA_REGION || "unknown-region";
 // Create Redis clients for all regions
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 
+console.log("Available env vars:", Object.keys(process.env).filter(key => key.includes('REDIS')));
+
 REGIONS.forEach(region => {
-  const envVar = `REDIS_${region.toUpperCase().replace('-', '_')}_URL`;
+  const normalizedRegion = region.toUpperCase().replace(/-/g, '_');
+  const envVar = `REDIS_${normalizedRegion}_URL`;
+  console.log(`Looking for Redis URL for ${region} using env var: ${envVar}`);
   const url = process.env[envVar];
+  
   if (url) {
+    console.log(`Found Redis URL for ${region}`);
     const client = createClient({ url });
     redisClients.set(region, client);
-    // Connect to Redis
     client.connect().catch(error => 
       console.error(`Failed to connect to Redis for ${region}:`, error)
     );
+  } else {
+    console.log(`No Redis URL found for ${region}`);
   }
 });
 
