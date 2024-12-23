@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from 'react';
-import * as THREE from 'three';
+import React from "react";
 
 interface RegionData {
   region: string;
@@ -12,172 +11,29 @@ interface CounterProps {
   currentRegion: string;
 }
 
-// Convert lat/long to 3D coordinates on a sphere
-function latLongToVector3(lat: number, long: number, radius: number): THREE.Vector3 {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (long + 180) * (Math.PI / 180);
-
-  const x = -(radius * Math.sin(phi) * Math.cos(theta));
-  const z = (radius * Math.sin(phi) * Math.sin(theta));
-  const y = (radius * Math.cos(phi));
-
-  return new THREE.Vector3(x, y, z);
-}
-
-// Datacenter coordinates [latitude, longitude]
+// Datacenter coordinates on the map
 const DATACENTER_LOCATIONS = {
-  'us-west1': [45.5155, -122.6789],     // Oregon
-  'us-east4': [37.7749, -77.4194],      // Virginia
-  'europe-west4': [52.3676, 4.9041],    // Netherlands
-  'asia-southeast1': [1.3521, 103.8198], // Singapore
+  'us-west1': { x: 100, y: 180, label: "US West (Oregon)" },      // Oregon
+  'us-east4': { x: 200, y: 180, label: "US East (Virginia)" },    // Virginia
+  'europe-west4': { x: 420, y: 150, label: "Europe West" },       // Netherlands
+  'asia-southeast1': { x: 680, y: 250, label: "Asia Southeast" }  // Singapore
 };
 
-function Globe({ regions, currentRegion }: CounterProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isMouseDown = useRef(false);
-  const mousePosition = useRef({ x: 0, y: 0 });
-  const globe = useRef<THREE.Mesh>();
-  const renderer = useRef<THREE.WebGLRenderer>();
-  const scene = useRef<THREE.Scene>();
-  const camera = useRef<THREE.PerspectiveCamera>();
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Scene setup
-    scene.current = new THREE.Scene();
-    scene.current.background = new THREE.Color('#0a0a24');
-
-    // Camera setup
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-    camera.current = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.current.position.z = 500;
-
-    // Renderer setup
-    renderer.current = new THREE.WebGLRenderer({ antialias: true });
-    renderer.current.setSize(width, height);
-    containerRef.current.appendChild(renderer.current.domElement);
-
-    // Globe
-    const radius = 200;
-    const segments = 50;
-    const geometry = new THREE.SphereGeometry(radius, segments, segments);
-    
-    // Create dot texture for globe
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw dots
-    ctx.fillStyle = '#1a237e';
-    for (let i = 0; i < 8000; i++) {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      ctx.beginPath();
-      ctx.arc(x, y, 1, 0, Math.PI * 2);
-      ctx.fill();
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return 'No updates yet';
+  
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return 'No updates yet';
     }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
+    return date.toLocaleString(undefined, {
+      timeZone: 'UTC',
+      timeZoneName: 'short'
     });
-
-    globe.current = new THREE.Mesh(geometry, material);
-    scene.current.add(globe.current);
-
-    // Add datacenters
-    Object.entries(DATACENTER_LOCATIONS).forEach(([region, [lat, long]]) => {
-      const position = latLongToVector3(lat, long, radius + 2);
-      const regionData = regions.find(r => r.region === region);
-      
-      // Marker geometry
-      const markerGeometry = new THREE.SphereGeometry(3, 16, 16);
-      const markerMaterial = new THREE.MeshBasicMaterial({ 
-        color: region === currentRegion ? '#ff69b4' : '#4a148c',
-        transparent: true,
-        opacity: 0.8
-      });
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.copy(position);
-      scene.current!.add(marker);
-
-      // Count label
-      if (regionData) {
-        const count = regionData.count.toString();
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        canvas.width = 128;
-        canvas.height = 64;
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 32px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(count, canvas.width / 2, canvas.height / 2);
-        
-        const labelTexture = new THREE.CanvasTexture(canvas);
-        const labelMaterial = new THREE.SpriteMaterial({ map: labelTexture });
-        const label = new THREE.Sprite(labelMaterial);
-        label.position.copy(position.multiplyScalar(1.1));
-        label.scale.set(30, 15, 1);
-        scene.current!.add(label);
-      }
-    });
-
-    // Animation
-    let animationFrame: number;
-    const animate = () => {
-      animationFrame = requestAnimationFrame(animate);
-      if (globe.current && !isMouseDown.current) {
-        globe.current.rotation.y += 0.001;
-      }
-      renderer.current!.render(scene.current!, camera.current!);
-    };
-    animate();
-
-    // Event handlers
-    const handleMouseDown = (e: MouseEvent) => {
-      isMouseDown.current = true;
-      mousePosition.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseUp = () => {
-      isMouseDown.current = false;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown.current || !globe.current) return;
-
-      const deltaX = e.clientX - mousePosition.current.x;
-      const deltaY = e.clientY - mousePosition.current.y;
-
-      globe.current.rotation.y += deltaX * 0.005;
-      globe.current.rotation.x += deltaY * 0.005;
-
-      mousePosition.current = { x: e.clientX, y: e.clientY };
-    };
-
-    containerRef.current.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('mousemove', handleMouseMove);
-
-    // Cleanup
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousedown', handleMouseDown);
-      }
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('mousemove', handleMouseMove);
-      cancelAnimationFrame(animationFrame);
-      renderer.current?.dispose();
-    };
-  }, [regions, currentRegion]);
-
-  return <div ref={containerRef} style={{ width: '800px', height: '600px' }} />;
+  } catch (e) {
+    return 'No updates yet';
+  }
 }
 
 export function Counter({ regions, currentRegion }: CounterProps) {
@@ -185,8 +41,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
 
-  // WebSocket setup...
-  useEffect(() => {
+  React.useEffect(() => {
     let reconnectTimer: number;
     
     function connect() {
@@ -218,15 +73,15 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         console.error('WebSocket error:', error);
         websocket.close();
       };
-
-      return websocket;
     }
 
-    const ws = connect();
+    connect();
 
     return () => {
       clearTimeout(reconnectTimer);
-      ws.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, []);
 
@@ -245,9 +100,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         gap: '1rem',
         marginBottom: '2rem',
         padding: '1rem',
-        backgroundColor: '#0a0a24',
-        borderRadius: '8px',
-        color: 'white'
+        backgroundColor: '#f0f0f0',
+        borderRadius: '8px'
       }}>
         <div>
           <strong>Your Region ({currentRegion}):</strong> {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
@@ -259,7 +113,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             padding: '8px 16px',
             fontSize: '16px',
             cursor: ws && ws.readyState === WebSocket.OPEN ? 'pointer' : 'not-allowed',
-            backgroundColor: '#ff69b4',
+            backgroundColor: '#007bff',
             color: 'white',
             border: 'none',
             borderRadius: '4px'
@@ -272,7 +126,117 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         </div>
       </div>
 
-      <Globe regions={localRegions} currentRegion={currentRegion} />
+      {/* Globe Visualization */}
+      <div style={{ marginBottom: '2rem' }}>
+        <svg width="800" height="400" viewBox="0 0 800 400" style={{ backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          {/* Simple world map outline - simplified continents */}
+          <path
+            d="M50,200 C100,150 200,150 300,200 C400,250 500,250 600,200 C700,150 750,150 750,200"
+            fill="none"
+            stroke="#ddd"
+            strokeWidth="100"
+            opacity="0.3"
+          />
+          
+          {/* Datacenters */}
+          {Object.entries(DATACENTER_LOCATIONS).map(([region, loc]) => {
+            const regionData = localRegions.find(r => r.region === region);
+            const isCurrentRegion = region === currentRegion;
+            return (
+              <g key={region}>
+                {/* Pulse animation for current region */}
+                {isCurrentRegion && (
+                  <circle
+                    cx={loc.x}
+                    cy={loc.y}
+                    r="20"
+                    fill="rgba(0, 123, 255, 0.2)"
+                    style={{
+                      animation: 'pulse 2s infinite'
+                    }}
+                  >
+                    <animate
+                      attributeName="r"
+                      values="20;30;20"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.2;0;0.2"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+                
+                {/* Datacenter point */}
+                <circle
+                  cx={loc.x}
+                  cy={loc.y}
+                  r="6"
+                  fill={isCurrentRegion ? "#007bff" : "#666"}
+                />
+                
+                {/* Counter value */}
+                <text
+                  x={loc.x}
+                  y={loc.y - 20}
+                  textAnchor="middle"
+                  fill="#333"
+                  fontSize="14"
+                  fontWeight="bold"
+                >
+                  {regionData?.count ?? 0}
+                </text>
+                
+                {/* Region label */}
+                <text
+                  x={loc.x}
+                  y={loc.y + 20}
+                  textAnchor="middle"
+                  fill="#666"
+                  fontSize="12"
+                >
+                  {loc.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Region cards */}
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        {localRegions.map((r) => (
+          <div 
+            key={r.region}
+            style={{ 
+              padding: '1rem',
+              border: r.region === currentRegion ? '2px solid blue' : '1px solid gray',
+              borderRadius: '4px'
+            }}
+          >
+            <h3>{r.region}</h3>
+            <div style={{ fontSize: '1.2em', marginBottom: '0.5rem' }}>
+              Count: {r.count}
+            </div>
+            <div style={{ fontSize: '0.8em', color: '#666' }}>
+              Last update: {formatDate(r.lastUpdate)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style>
+        {`
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0.2; }
+          }
+        `}
+      </style>
     </div>
   );
 }
