@@ -11,6 +11,14 @@ interface CounterProps {
   currentRegion: string;
 }
 
+// Datacenter coordinates on the map
+const DATACENTER_LOCATIONS = {
+  'us-west1': { x: 100, y: 180, label: "US West (Oregon)" },      // Oregon
+  'us-east4': { x: 200, y: 180, label: "US East (Virginia)" },    // Virginia
+  'europe-west4': { x: 420, y: 150, label: "Europe West" },       // Netherlands
+  'asia-southeast1': { x: 680, y: 250, label: "Asia Southeast" }  // Singapore
+};
+
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return 'No updates yet';
   
@@ -58,20 +66,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         setStatus("reconnecting");
         setWs(null);
         clearTimeout(reconnectTimer);
-        // Try to reconnect more frequently during deployment (every 2 seconds)
         reconnectTimer = setTimeout(connect, 2000) as unknown as number;
       };
 
       websocket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        websocket.close(); // This will trigger onclose and reconnection
+        websocket.close();
       };
     }
 
-    // Initial connection
     connect();
 
-    // Cleanup function
     return () => {
       clearTimeout(reconnectTimer);
       if (ws) {
@@ -86,8 +91,6 @@ export function Counter({ regions, currentRegion }: CounterProps) {
     }
   };
 
-  const currentCount = localRegions.find(r => r.region === currentRegion)?.count ?? 0;
-
   return (
     <div>
       <h1>Global Counter Network</h1>
@@ -101,7 +104,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         borderRadius: '8px'
       }}>
         <div>
-          <strong>Your Region ({currentRegion}):</strong> {currentCount}
+          <strong>Your Region ({currentRegion}):</strong> {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
         </div>
         <button
           onClick={incrementCounter}
@@ -122,7 +125,88 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           Status: {status}
         </div>
       </div>
-      
+
+      {/* Globe Visualization */}
+      <div style={{ marginBottom: '2rem' }}>
+        <svg width="800" height="400" viewBox="0 0 800 400" style={{ backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          {/* Simple world map outline - simplified continents */}
+          <path
+            d="M50,200 C100,150 200,150 300,200 C400,250 500,250 600,200 C700,150 750,150 750,200"
+            fill="none"
+            stroke="#ddd"
+            strokeWidth="100"
+            opacity="0.3"
+          />
+          
+          {/* Datacenters */}
+          {Object.entries(DATACENTER_LOCATIONS).map(([region, loc]) => {
+            const regionData = localRegions.find(r => r.region === region);
+            const isCurrentRegion = region === currentRegion;
+            return (
+              <g key={region}>
+                {/* Pulse animation for current region */}
+                {isCurrentRegion && (
+                  <circle
+                    cx={loc.x}
+                    cy={loc.y}
+                    r="20"
+                    fill="rgba(0, 123, 255, 0.2)"
+                    style={{
+                      animation: 'pulse 2s infinite'
+                    }}
+                  >
+                    <animate
+                      attributeName="r"
+                      values="20;30;20"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.2;0;0.2"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+                
+                {/* Datacenter point */}
+                <circle
+                  cx={loc.x}
+                  cy={loc.y}
+                  r="6"
+                  fill={isCurrentRegion ? "#007bff" : "#666"}
+                />
+                
+                {/* Counter value */}
+                <text
+                  x={loc.x}
+                  y={loc.y - 20}
+                  textAnchor="middle"
+                  fill="#333"
+                  fontSize="14"
+                  fontWeight="bold"
+                >
+                  {regionData?.count ?? 0}
+                </text>
+                
+                {/* Region label */}
+                <text
+                  x={loc.x}
+                  y={loc.y + 20}
+                  textAnchor="middle"
+                  fill="#666"
+                  fontSize="12"
+                >
+                  {loc.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Region cards */}
       <div style={{ display: 'grid', gap: '1rem' }}>
         {localRegions.map((r) => (
           <div 
@@ -143,6 +227,16 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           </div>
         ))}
       </div>
+
+      <style>
+        {`
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0.2; }
+          }
+        `}
+      </style>
     </div>
   );
 }
