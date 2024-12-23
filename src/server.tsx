@@ -38,10 +38,13 @@ REGIONS.forEach(region => {
 // Get counts from all Redis instances
 async function getAllCounts(): Promise<RegionState[]> {
   const counts: RegionState[] = [];
+  console.log("Getting counts for regions:", Array.from(redisClients.keys()));
   
   for (const [region, client] of redisClients.entries()) {
     try {
+      console.log(`Fetching count for ${region}...`);
       const value = await client.get(`counter:${region}`) || '0';
+      console.log(`Got count for ${region}:`, value);
       counts.push({
         region,
         count: parseInt(value, 10),
@@ -57,6 +60,7 @@ async function getAllCounts(): Promise<RegionState[]> {
     }
   }
   
+  console.log("Final counts:", counts);
   return counts;
 }
 
