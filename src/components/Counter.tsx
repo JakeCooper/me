@@ -1,10 +1,5 @@
 import React from "react";
-
-interface RegionData {
-  region: string;
-  count: number;
-  lastUpdate: string;
-}
+import type { RegionData } from "../types";
 
 interface CounterProps {
   regions: RegionData[];

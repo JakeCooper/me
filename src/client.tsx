@@ -1,15 +1,12 @@
 import React from "react";
 import { hydrateRoot } from "react-dom/client";
 import { Counter } from "./components/Counter";
+import type { RegionData } from "./components/Counter";
 
 declare global {
   interface Window {
     __INITIAL_DATA__: {
-      regions: Array<{
-        region: string;
-        count: number;
-        lastUpdate: number;
-      }>;
+      regions: Array<RegionData>;
       currentRegion: string;
     };
   }
