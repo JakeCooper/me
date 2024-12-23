@@ -5,40 +5,38 @@ import { createClient } from 'redis';
 
 // Types
 interface RegionState {
+  region: string;
   count: number;
   lastUpdate: string;
 }
 
-// All known regions
-const REGIONS = [
-  'us-west2',
-  'us-east1', 
-  'asia-southeast',
-  'europe-west'
-];
-
+// Region configuration
 const REGION = process.env.RAILWAY_REPLICA_REGION || "unknown-region";
+
+// Region to Redis URL mapping
+const REDIS_MAPPING = {
+  'us-west2': process.env.REDIS_WEST_URL,
+  'us-east1': process.env.REDIS_EAST_URL,
+  'asia-southeast': process.env.REDIS_ASIA_URL,
+  'europe-west': process.env.REDIS_EUROPE_URL
+};
 
 // Create Redis clients for all regions
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 
 console.log("Available env vars:", Object.keys(process.env).filter(key => key.includes('REDIS')));
 
-REGIONS.forEach(region => {
-  const normalizedRegion = region.toUpperCase().replace(/-/g, '_');
-  const envVar = `REDIS_${normalizedRegion}_URL`;
-  console.log(`Looking for Redis URL for ${region} using env var: ${envVar}`);
-  const url = process.env[envVar];
-  
+Object.entries(REDIS_MAPPING).forEach(([region, url]) => {
+  console.log(`Setting up Redis for ${region} with URL ${url?.slice(0, 10)}...`);
   if (url) {
-    console.log(`Found Redis URL for ${region}`);
     const client = createClient({ url });
     redisClients.set(region, client);
+    // Connect to Redis
     client.connect().catch(error => 
       console.error(`Failed to connect to Redis for ${region}:`, error)
     );
   } else {
-    console.log(`No Redis URL found for ${region}`);
+    console.log(`No Redis URL configured for ${region}`);
   }
 });
 
