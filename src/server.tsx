@@ -24,7 +24,7 @@ const REDIS_MAPPING = {
 // Create Redis clients for all regions
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 // Separate client for subscriptions
-const subscriber = createClient({ url: process.env.REDIS_WEST_URL }); // Use any Redis instance for pub/sub
+const subscriber = createClient({ url: process.env.REDIS_WEST_URL });
 
 // Cache for latest counts
 const latestCounts = new Map<string, RegionState>();
@@ -155,9 +155,14 @@ const server = Bun.serve({
       return undefined;
     }
 
-    // Increment counter on any HTTP request (except for client.js)
-    if (url.pathname !== '/client.js') {
+    // Increment counter only on the main page request
+    if (url.pathname === '/') {
       await incrementCounter();
+    }
+
+    // Ignore favicon.ico requests
+    if (url.pathname === '/favicon.ico') {
+      return new Response(null, { status: 404 });
     }
 
     // Serve client bundle
