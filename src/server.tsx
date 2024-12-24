@@ -245,6 +245,10 @@ const server = Bun.serve({
             }
           };
           
+          // Send update to all connected WebSocket clients
+          const wsMessage = JSON.stringify(update);
+          clients.forEach(client => client.send(wsMessage));
+          
           // Broadcast to all regions via Redis
           for (const [_, client] of redisClients.entries()) {
             await client.publish('counter-updates', JSON.stringify(update));
