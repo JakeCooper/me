@@ -29,6 +29,13 @@ const REDIS_MAPPING = {
   'europe-west4': process.env.REDIS_EUROPE_URL
 };
 
+const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
+  'us-west1': [45.5945, -122.1562],    // Oregon
+  'us-east4': [38.7223, -77.0196],     // Virginia
+  'europe-west4': [53.4478, 6.8367],   // Netherlands
+  'asia-southeast1': [1.3521, 103.8198] // Singapore
+};
+
 // Create Redis clients for all regions
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 const subscribers = new Map<string, ReturnType<typeof createClient>>();
