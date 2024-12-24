@@ -86,7 +86,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   );
 
   const styles: GlobeStyles = useMemo(
-    () => globeStyles["dark"],
+    () => globeStyles["light"],
     [],
   ); // TODO: Support darkmode switch
 
