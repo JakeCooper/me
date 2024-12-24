@@ -21,147 +21,126 @@ const REDIS_MAPPING = {
   'europe-west4': process.env.REDIS_EUROPE_URL
 };
 
-// Create Redis clients for all regions
-const redisClients = new Map<string, ReturnType<typeof createClient>>();
+// Create Redis clients - one writer for our region and subscribers for all regions
+const localRedis = createClient({ url: REDIS_MAPPING[REGION] });
 const subscribers = new Map<string, ReturnType<typeof createClient>>();
 
 // Cache for latest counts
 const latestCounts = new Map<string, RegionState>();
 
-console.log("Current region:", REGION);
-console.log("Available env vars:", Object.keys(process.env).filter(key => key.includes('REDIS')));
+// Connected WebSocket clients for updates
+const clients = new Set<WebSocket>();
 
-// Setup Redis connections and subscribers
-Object.entries(REDIS_MAPPING).forEach(([region, url]) => {
-  if (url) {
-    console.log(`Setting up Redis for ${region}...`);
-    
-    // Create main client
-    const client = createClient({ url });
-    redisClients.set(region, client);
-    client.connect().catch(error => 
-      console.error(`Failed to connect to Redis for ${region}:`, error)
-    );
-    
-    // Create subscriber
-    const subscriber = createClient({ url });
-    subscribers.set(region, subscriber);
-    
-    // Initialize cache
-    latestCounts.set(region, {
-      region,
-      count: 0,
-      lastUpdate: new Date().toISOString()
-    });
-  } else {
-    console.error(`No Redis URL configured for ${region}`);
+// Initialize connections
+async function initializeRedis() {
+  try {
+    // Connect local Redis for writing
+    await localRedis.connect();
+    console.log('Connected to local Redis');
+
+    // Create and connect subscribers for each region
+    for (const [region, url] of Object.entries(REDIS_MAPPING)) {
+      if (!url) continue;
+
+      const subscriber = createClient({ url });
+      subscribers.set(region, subscriber);
+
+      try {
+        await subscriber.connect();
+        console.log(`Connected subscriber to ${region}`);
+
+        // Subscribe to updates from this region
+        await subscriber.subscribe(`counter:${region}:updates`, async (message) => {
+          try {
+            const update = JSON.parse(message);
+            latestCounts.set(update.region, update);
+
+            // Broadcast to all WebSocket clients
+            const regions = Array.from(latestCounts.values());
+            const wsMessage = JSON.stringify({ type: "state", regions });
+            clients.forEach(client => client.send(wsMessage));
+          } catch (error) {
+            console.error(`Error processing update from ${region}:`, error);
+          }
+        });
+
+        // Get initial count for this region
+        const count = await subscriber.get(`counter:${region}`) || '0';
+        latestCounts.set(region, {
+          region,
+          count: parseInt(count, 10),
+          lastUpdate: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error(`Error connecting to ${region}:`, error);
+        // We'll keep trying to reconnect for failed regions
+        retryConnection(region, url);
+      }
+    }
+  } catch (error) {
+    console.error('Redis initialization error:', error);
+    // Retry initialization after delay
+    setTimeout(initializeRedis, 5000);
   }
-});
+}
 
-// Setup subscribers for all regions
-async function setupSubscribers() {
-  for (const [region, subscriber] of subscribers.entries()) {
+// Retry connection to a region
+async function retryConnection(region: string, url: string, delay = 5000) {
+  while (true) {
     try {
+      const subscriber = createClient({ url });
       await subscriber.connect();
-      console.log(`Subscriber connected to ${region}`);
       
-      await subscriber.subscribe('counter-updates', (message) => {
+      subscribers.set(region, subscriber);
+      await subscriber.subscribe(`counter:${region}:updates`, async (message) => {
         try {
-          console.log(`Received update from ${region}:`, message);
           const update = JSON.parse(message);
-          latestCounts.set(update.region, {
-            region: update.region,
-            count: update.count,
-            lastUpdate: update.lastUpdate
-          });
-          
-          // Broadcast to all WebSocket clients
-          const regions = Array.from(latestCounts.values());
-          const wsMessage = JSON.stringify({ type: "state", regions });
-          clients.forEach(client => client.send(wsMessage));
+          latestCounts.set(update.region, update);
+          broadcastToClients();
         } catch (error) {
-          console.error(`Error processing Redis message from ${region}:`, error);
+          console.error(`Error processing update from ${region}:`, error);
         }
       });
-      
-      console.log(`Subscribed to counter-updates on ${region}`);
+
+      console.log(`Successfully reconnected to ${region}`);
+      break;
     } catch (error) {
-      console.error(`Failed to setup subscriber for ${region}:`, error);
+      console.error(`Retry connection to ${region} failed:`, error);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 }
 
-setupSubscribers().catch(console.error);
-
-// Get counts from Redis
-async function getAllCounts(): Promise<RegionState[]> {
-  const counts: RegionState[] = [];
-  console.log("Getting counts from Redis for all regions");
-  
-  for (const [region, client] of redisClients.entries()) {
-    try {
-      console.log(`Fetching count for ${region}...`);
-      const value = await client.get(`counter:${region}`);
-      console.log(`Got count for ${region}:`, value);
-      
-      const count = value ? parseInt(value, 10) : 0;
-      const state = {
-        region,
-        count,
-        lastUpdate: new Date().toISOString()
-      };
-      
-      counts.push(state);
-      latestCounts.set(region, state);
-    } catch (error) {
-      console.error(`Error getting count for ${region}:`, error);
-      counts.push({
-        region,
-        count: 0,
-        lastUpdate: new Date().toISOString()
-      });
-    }
-  }
-  
-  console.log("Final counts:", counts);
-  return counts;
+// Broadcast current state to all WebSocket clients
+function broadcastToClients() {
+  const regions = Array.from(latestCounts.values());
+  const wsMessage = JSON.stringify({ type: "state", regions });
+  clients.forEach(client => client.send(wsMessage));
 }
 
-// Increment counter and publish update to all regions
+// Increment counter
 async function incrementCounter(): Promise<number> {
-  console.log(`Incrementing counter for ${REGION}`);
-  const client = redisClients.get(REGION);
-  if (!client) throw new Error(`No Redis client for ${REGION}`);
-  
   const key = `counter:${REGION}`;
-  const newValue = await client.incr(key);
-  console.log(`New value for ${REGION}: ${newValue}`);
-  
-  // Publish update
+  const newValue = await localRedis.incr(key);
+
+  // Create update message
   const update = {
     region: REGION,
     count: newValue,
     lastUpdate: new Date().toISOString()
   };
-  
-  // Update cache
+
+  // Update local cache
   latestCounts.set(REGION, update);
-  
-  // Publish to all Redis instances
-  const updateStr = JSON.stringify(update);
-  console.log(`Publishing update to all regions:`, updateStr);
-  
-  await Promise.all(Array.from(redisClients.values()).map(client => 
-    client.publish('counter-updates', updateStr).catch(error => 
-      console.error('Error publishing update:', error)
-    )
-  ));
-  
+
+  // Publish update to our region's channel
+  await localRedis.publish(`counter:${REGION}:updates`, JSON.stringify(update));
+
   return newValue;
 }
 
-// Connected WebSocket clients for updates
-const clients = new Set<WebSocket>();
+// Initialize Redis connections
+initializeRedis().catch(console.error);
 
 const server = Bun.serve({
   port: 3000,
@@ -201,7 +180,7 @@ const server = Bun.serve({
     }
 
     // Server-side render
-    const regions = await getAllCounts();
+    const regions = Array.from(latestCounts.values());
     const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
     
     return new Response(
@@ -229,7 +208,7 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       clients.add(ws);
-      // Send current state from cache immediately
+      // Send current state immediately
       const regions = Array.from(latestCounts.values());
       ws.send(JSON.stringify({ type: "state", regions }));
     },
@@ -238,18 +217,16 @@ const server = Bun.serve({
     },
     async message(ws, message) {
       try {
-        console.log('Received WebSocket message:', message);
         const data = JSON.parse(message.toString());
         if (data.type === "increment") {
-          console.log('Incrementing counter from WebSocket request');
           await incrementCounter();
         }
-      } catch (e) {
-        console.error("Error processing WebSocket message:", e);
+      } catch (error) {
+        console.error("Error processing message:", error);
       }
     },
   },
 });
 
 console.log(`Server running at http://localhost:${server.port} (${REGION})`);
-console.log(`Connected to Redis instances: ${Array.from(redisClients.keys()).join(", ")}`);
+console.log('Connected to Redis instances:', Array.from(subscribers.keys()).join(', '));
