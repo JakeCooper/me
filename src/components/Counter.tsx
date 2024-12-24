@@ -80,7 +80,7 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         ref={globeEl}
         width={800}
         height={800}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         
         pointsData={pointsData}
