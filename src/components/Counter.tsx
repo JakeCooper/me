@@ -28,14 +28,12 @@ const DATACENTER_LOCATIONS = {
   'asia-southeast1': [1.3521, 103.8198] // Singapore
 };
 
-let Globe: any = () => null;
-if (typeof window !== "undefined") {
-  Globe = require("react-globe.gl").default;
+if (typeof window !== 'undefined') {
+  ReactGlobe = require('react-globe.gl').default;
 }
 
-function GlobeViz({ regions, currentRegion }: CounterProps) {
+const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   const globeEl = useRef<any>();
-  const [ready, setReady] = React.useState(false);
 
   // Setup points data
   const pointsData = useMemo(() => 
@@ -49,31 +47,17 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     [regions, currentRegion]
   );
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      ReactGlobe = require('react-globe.gl').default;
-      setReady(true);
-    }
-  }, []);
-
   // Auto-rotate
   useEffect(() => {
-    if (!globeEl.current) return;
+    const globe = globeEl.current;
+    if (globe == null) return;
 
     globeEl.current.pointOfView(MAP_CENTER, 0);
     
-    globeEl.current.controls().enableZoom = false;
     globeEl.current.controls().autoRotate = true;
-    globeEl.current.controls().autoRotateSpeed = 0.7;
-
-    const controls = globeEl.current.controls();
-    controls.minPolarAngle = Math.PI / 3.5;
-    controls.maxPolarAngle = Math.PI - Math.PI / 3;
+    globeEl.current.controls().enableZoom = false;
+    globeEl.current.controls().autoRotateSpeed = -0.5;
   }, []);
-
-  if (!ready || typeof window === 'undefined') {
-    return null;
-  }
 
   return (
     <div style={{ 
