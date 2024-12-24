@@ -15,11 +15,7 @@ interface CounterProps {
   currentRegion: string;
 }
 
-const MAP_CENTER = {
-  lat: 30,
-  lng: 0,
-  altitude: 2.5
-};
+const MAP_CENTER = { lat: 30.773972, lng: -100.561668, altitude: 1.68 };
 
 // Data center coordinates [lat, lng]
 const DATACENTER_LOCATIONS = {
@@ -103,12 +99,6 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
         atmosphereAltitude={0.25}
-        
-        pointOfView={{
-          lat: 30,
-          lng: 0,
-          altitude: 2.5
-        }}
 
         hexPolygonsData={regions}
         hexPolygonResolution={3}
