@@ -92,12 +92,26 @@ if (typeof window !== 'undefined') {
 }
 
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
+  console.log('Regions:', regions);
+  console.log('Current Region:', currentRegion);
+  console.log('Connections:', connections);
+
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
   useEffect(() => {
     if (globeEl.current) {
       setIsLoaded(true);
+    }
+  }, [globeEl.current]);
+
+  useEffect(() => {
+    // Only render globe once it's loaded
+    if (typeof window !== 'undefined' && globeEl.current) {
+      console.log('Globe is ready, settings:', {
+        datacenterPoints,
+        currentRegion
+      });
     }
   }, [globeEl.current]);
 
