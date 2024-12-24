@@ -103,7 +103,12 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
         atmosphereAltitude={0.25}
-      
+        
+        pointOfView={{
+          lat: 30,
+          lng: 0,
+          altitude: 2.5
+        }}
 
         hexPolygonsData={regions}
         hexPolygonResolution={3}
