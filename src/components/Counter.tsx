@@ -107,7 +107,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
     Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => ({
       lat,
       lng,
-      size: region === currentRegion ? 1.5 : 1,
+      size: region === currentRegion ? 1.25 : 0.75,
       color: region === currentRegion ? "#E835A0" : "#9241D3",
       label: `${region}: ${regions.find(r => r.region === region)?.count ?? 0}`
     })),
