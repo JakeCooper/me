@@ -147,7 +147,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         // hexPolygonUseDots={true}
         // hexPolygonAltitude={0.01}
         hexPolygonsData={countries.features}
-        hexPolygonColor={() => "rgba(146,65,211,1.0)"} // Full opacity
+        hexPolygonColor={() => styles.hexPolygonColor} // Full opacity
         hexPolygonResolution={3}
         hexPolygonMargin={0.7}
       />
