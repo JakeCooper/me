@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import { Color, MeshPhongMaterial } from "three";
 import * as THREE from 'three';
 import * as topojson from 'topojson-client';
@@ -70,8 +70,37 @@ if (typeof window !== 'undefined') {
   ReactGlobe = require('react-globe.gl').default;
 }
 
+const useGeolocation = () => {
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    const success = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      setLocation({ lat: latitude, lng: longitude });
+    };
+
+    const fail = (err: GeolocationPositionError) => {
+      setError(`Unable to retrieve your location (${err.message})`);
+    };
+
+    navigator.geolocation.getCurrentPosition(success, fail);
+  }, []);
+
+  return { location, error };
+};
+
 const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   const globeEl = useRef<any>();
+
+  const { location: userLocation, error } = useGeolocation();
+
+  console.log(userLocation, error);
 
   // Setup points data
   const pointsData = useMemo(() => 
