@@ -1,34 +1,239 @@
-import React from "react";
-import type { RegionData } from "../types";
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+interface RegionData {
+  region: string;
+  count: number;
+  lastUpdate: string;
+}
 
 interface CounterProps {
   regions: RegionData[];
   currentRegion: string;
 }
 
-// Datacenter coordinates on the map
+// Convert lat/long to 3D coordinates
+function latLngToVector3(lat: number, lng: number, radius: number) {
+  const phi = (90 - lat) * Math.PI / 180;
+  const theta = (lng + 180) * Math.PI / 180;
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+// Datacenter coordinates [latitude, longitude]
 const DATACENTER_LOCATIONS = {
-  'us-west1': { x: 100, y: 180, label: "US West (Oregon)" },      // Oregon
-  'us-east4': { x: 200, y: 180, label: "US East (Virginia)" },    // Virginia
-  'europe-west4': { x: 420, y: 150, label: "Europe West" },       // Netherlands
-  'asia-southeast1': { x: 680, y: 250, label: "Asia Southeast" }  // Singapore
+  'us-west1': [45.5945, -122.1562],    // Oregon
+  'us-east4': [38.7223, -77.0196],     // Virginia
+  'europe-west4': [53.4478, 6.8367],   // Netherlands
+  'asia-southeast1': [1.3521, 103.8198] // Singapore
 };
 
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return 'No updates yet';
-  
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return 'No updates yet';
-    }
-    return date.toLocaleString(undefined, {
-      timeZone: 'UTC',
-      timeZoneName: 'short'
+function Globe({ regions, currentRegion }: CounterProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const globeRef = useRef<THREE.Mesh | null>(null);
+  const markersRef = useRef<THREE.Group | null>(null);
+  const isDragging = useRef(false);
+  const previousMousePosition = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 250;
+    cameraRef.current = camera;
+
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setClearColor(0x000000, 0);
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Globe geometry
+    const globeGeometry = new THREE.SphereGeometry(100, 64, 64);
+    const globeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x000033,
+      transparent: true,
+      opacity: 0.8,
+      wireframe: true
     });
-  } catch (e) {
-    return 'No updates yet';
-  }
+    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
+    scene.add(globe);
+    globeRef.current = globe;
+
+    // Markers group
+    const markersGroup = new THREE.Group();
+    scene.add(markersGroup);
+    markersRef.current = markersGroup;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 2, 500);
+    pointLight.position.set(100, 100, 100);
+    scene.add(pointLight);
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      if (!isDragging.current && globeRef.current) {
+        globeRef.current.rotation.y += 0.001;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Event handlers
+    function onMouseDown(event: MouseEvent) {
+      isDragging.current = true;
+      previousMousePosition.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      if (!isDragging.current || !globeRef.current) return;
+
+      const deltaMove = {
+        x: event.clientX - previousMousePosition.current.x,
+        y: event.clientY - previousMousePosition.current.y
+      };
+
+      globeRef.current.rotation.y += deltaMove.x * 0.005;
+      globeRef.current.rotation.x += deltaMove.y * 0.005;
+
+      previousMousePosition.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
+    }
+
+    function onMouseUp() {
+      isDragging.current = false;
+    }
+
+    renderer.domElement.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    // Window resize handler
+    function onWindowResize() {
+      if (!containerRef.current) return;
+      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    // Cleanup
+    return () => {
+      renderer.domElement.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('resize', onWindowResize);
+      renderer.dispose();
+    };
+  }, []);
+
+  // Update markers when regions data changes
+  useEffect(() => {
+    if (!markersRef.current || !sceneRef.current) return;
+
+    // Clear existing markers
+    while (markersRef.current.children.length) {
+      markersRef.current.remove(markersRef.current.children[0]);
+    }
+
+    // Add new markers
+    Object.entries(DATACENTER_LOCATIONS).forEach(([region, [lat, lng]]) => {
+      const position = latLngToVector3(lat, lng, 102); // Slightly above globe surface
+      const regionData = regions.find(r => r.region === region);
+      
+      // Create marker
+      const markerGeometry = new THREE.SphereGeometry(2, 16, 16);
+      const markerMaterial = new THREE.MeshPhongMaterial({
+        color: region === currentRegion ? 0xff69b4 : 0x4a148c,
+        emissive: region === currentRegion ? 0xff69b4 : 0x4a148c,
+        emissiveIntensity: 0.5
+      });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.copy(position);
+      markersRef.current.add(marker);
+
+      // Add glow effect
+      const glowGeometry = new THREE.SphereGeometry(3, 16, 16);
+      const glowMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          c: { value: 0.1 },
+          p: { value: 4.5 },
+          glowColor: { value: new THREE.Color(region === currentRegion ? 0xff69b4 : 0x4a148c) }
+        },
+        vertexShader: `
+          varying vec3 vNormal;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 glowColor;
+          uniform float c;
+          uniform float p;
+          varying vec3 vNormal;
+          void main() {
+            float intensity = pow(c - dot(vNormal, vec3(0.0, 0.0, 1.0)), p);
+            gl_FragColor = vec4(glowColor, intensity);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      glow.position.copy(position);
+      markersRef.current.add(glow);
+
+      // Add counter value as sprite
+      if (regionData) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d')!;
+        canvas.width = 64;
+        canvas.height = 32;
+        context.fillStyle = 'white';
+        context.font = 'bold 24px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(regionData.count.toString(), canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.copy(position);
+        sprite.position.multiplyScalar(1.1); // Move slightly outward
+        sprite.scale.set(20, 10, 1);
+        markersRef.current.add(sprite);
+      }
+    });
+  }, [regions, currentRegion]);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '500px' }} />;
 }
 
 export function Counter({ regions, currentRegion }: CounterProps) {
@@ -36,7 +241,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
 
-  React.useEffect(() => {
+  useEffect(() => {
     let reconnectTimer: number;
     
     function connect() {
@@ -68,15 +273,15 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         console.error('WebSocket error:', error);
         websocket.close();
       };
+
+      return websocket;
     }
 
-    connect();
+    const ws = connect();
 
     return () => {
       clearTimeout(reconnectTimer);
-      if (ws) {
-        ws.close();
-      }
+      ws.close();
     };
   }, []);
 
@@ -95,8 +300,9 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         gap: '1rem',
         marginBottom: '2rem',
         padding: '1rem',
-        backgroundColor: '#f0f0f0',
-        borderRadius: '8px'
+        backgroundColor: '#0a0a24',
+        borderRadius: '8px',
+        color: 'white'
       }}>
         <div>
           <strong>Your Region ({currentRegion}):</strong> {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
@@ -108,7 +314,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             padding: '8px 16px',
             fontSize: '16px',
             cursor: ws && ws.readyState === WebSocket.OPEN ? 'pointer' : 'not-allowed',
-            backgroundColor: '#007bff',
+            backgroundColor: '#ff69b4',
             color: 'white',
             border: 'none',
             borderRadius: '4px'
@@ -121,117 +327,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         </div>
       </div>
 
-      {/* Globe Visualization */}
-      <div style={{ marginBottom: '2rem' }}>
-        <svg width="800" height="400" viewBox="0 0 800 400" style={{ backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-          {/* Simple world map outline - simplified continents */}
-          <path
-            d="M50,200 C100,150 200,150 300,200 C400,250 500,250 600,200 C700,150 750,150 750,200"
-            fill="none"
-            stroke="#ddd"
-            strokeWidth="100"
-            opacity="0.3"
-          />
-          
-          {/* Datacenters */}
-          {Object.entries(DATACENTER_LOCATIONS).map(([region, loc]) => {
-            const regionData = localRegions.find(r => r.region === region);
-            const isCurrentRegion = region === currentRegion;
-            return (
-              <g key={region}>
-                {/* Pulse animation for current region */}
-                {isCurrentRegion && (
-                  <circle
-                    cx={loc.x}
-                    cy={loc.y}
-                    r="20"
-                    fill="rgba(0, 123, 255, 0.2)"
-                    style={{
-                      animation: 'pulse 2s infinite'
-                    }}
-                  >
-                    <animate
-                      attributeName="r"
-                      values="20;30;20"
-                      dur="2s"
-                      repeatCount="indefinite"
-                    />
-                    <animate
-                      attributeName="opacity"
-                      values="0.2;0;0.2"
-                      dur="2s"
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                )}
-                
-                {/* Datacenter point */}
-                <circle
-                  cx={loc.x}
-                  cy={loc.y}
-                  r="6"
-                  fill={isCurrentRegion ? "#007bff" : "#666"}
-                />
-                
-                {/* Counter value */}
-                <text
-                  x={loc.x}
-                  y={loc.y - 20}
-                  textAnchor="middle"
-                  fill="#333"
-                  fontSize="14"
-                  fontWeight="bold"
-                >
-                  {regionData?.count ?? 0}
-                </text>
-                
-                {/* Region label */}
-                <text
-                  x={loc.x}
-                  y={loc.y + 20}
-                  textAnchor="middle"
-                  fill="#666"
-                  fontSize="12"
-                >
-                  {loc.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Region cards */}
-      <div style={{ display: 'grid', gap: '1rem' }}>
-        {localRegions.map((r) => (
-          <div 
-            key={r.region}
-            style={{ 
-              padding: '1rem',
-              border: r.region === currentRegion ? '2px solid blue' : '1px solid gray',
-              borderRadius: '4px'
-            }}
-          >
-            <h3>{r.region}</h3>
-            <div style={{ fontSize: '1.2em', marginBottom: '0.5rem' }}>
-              Count: {r.count}
-            </div>
-            <div style={{ fontSize: '0.8em', color: '#666' }}>
-              Last update: {formatDate(r.lastUpdate)}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <style>
-        {`
-          @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.2; }
-            50% { transform: scale(1.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 0.2; }
-          }
-        `}
-      </style>
+      <Globe regions={localRegions} currentRegion={currentRegion} />
     </div>
   );
 }
