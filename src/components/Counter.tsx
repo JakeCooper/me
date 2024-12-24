@@ -81,23 +81,33 @@ if (typeof window !== 'undefined') {
   ReactGlobe = require('react-globe.gl').default;
 }
 
-const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & { connections: Connection[] }) => {
+const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
   const globeEl = useRef<any>();
 
   // Setup points data with labels
   const pointsData = useMemo(() => 
-    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
-      const regionData = regions.find(r => r.region === region);
-      return {
-        lat,
-        lng,
-        size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? "#E835A0" : "#9241D3",
-        region,
-        count: regionData?.count ?? 0
-      };
-    }),
-    [regions, currentRegion]
+    [
+      ...Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
+        const regionData = regions.find(r => r.region === region);
+        return {
+          lat,
+          lng,
+          size: region === currentRegion ? 1.5 : 1,
+          color: region === currentRegion ? "#E835A0" : "#9241D3",
+          region,
+          count: regionData?.count ?? 0,
+          type: 'datacenter'
+        };
+      }),
+      ...(userLocation ? [{
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        size: 1,
+        color: 'green',
+        type: 'user'
+      }] : [])
+    ],
+    [regions, currentRegion, userLocation]
   );
 
   const styles: GlobeStyles = useMemo(
@@ -142,38 +152,40 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
         customLayerData={pointsData}
         customThreeObject={d => {
           const group = new THREE.Group();
-
+        
           const point = new THREE.Mesh(
             new THREE.SphereGeometry(d.size, 16, 16),
             new THREE.MeshBasicMaterial({ color: d.color })
           );
           group.add(point);
-
-          const canvas = document.createElement('canvas');
-          canvas.width = 128;
-          canvas.height = 64;
-          const ctx = canvas.getContext('2d')!;
-          
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-          ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
-          ctx.fill();
-          
-          ctx.fillStyle = 'white';
-          ctx.font = 'bold 32px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
-
-          const texture = new THREE.CanvasTexture(canvas);
-          const spriteMaterial = new THREE.SpriteMaterial({ 
-            map: texture,
-            transparent: true
-          });
-          const label = new THREE.Sprite(spriteMaterial);
-          label.scale.set(10, 5, 1);
-          label.position.y = 10;
-          group.add(label);
-
+        
+          if (d.type === 'datacenter') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d')!;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
+        
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+              map: texture,
+              transparent: true
+            });
+            const label = new THREE.Sprite(spriteMaterial);
+            label.scale.set(10, 5, 1);
+            label.position.y = 10;
+            group.add(label);
+          }
+        
           return group;
         }}
         customThreeObjectUpdate={(obj, d) => {
@@ -402,6 +414,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           regions={localRegions} 
           currentRegion={currentRegion} 
           connections={connections} 
+          userLocation={userLocation}
         />
       </div>
     </div>
