@@ -109,7 +109,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         lat,
         lng,
         size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? "#FFFFFF" : "#9241D3",
+        color: region === currentRegion ? "#5CC5B9" : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -146,7 +146,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       gap: 0.02,
       dash: 0.02,
       scale: 0.3,
-      time: 2000,
+      time: 5000,
     })),
     [connections, currentRegion]
   );
