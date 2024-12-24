@@ -3,9 +3,6 @@ import { Color, MeshPhongMaterial } from "three";
 import * as THREE from 'three';
 import * as topojson from 'topojson-client';
 import world from './world.json';
-import type { GlobeProps } from "react-globe.gl";
-
-let ReactGlobe: React.FC<GlobeProps & { ref: any }> = () => null;
 
 interface RegionData {
   region: string;
@@ -79,12 +76,12 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       padding: '2rem',
       borderRadius: '8px'
     }}>
-      <ReactGlobe
+      <Globe
         ref={globeEl}
         width={800}
         height={800}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        // globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
+        // bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         
         pointsData={pointsData}
         pointAltitude={0.01}
@@ -98,6 +95,12 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
         atmosphereAltitude={0.25}
+        
+        pointOfView={{
+          lat: 30,
+          lng: 0,
+          altitude: 2.5
+        }}
 
         hexPolygonsData={regions}
         hexPolygonResolution={3}
