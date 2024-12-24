@@ -261,16 +261,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         // Arc configuration
         arcsData={arcData}
-        // arcColor="color"
-        // arcStroke={1.5}
-        // arcDashLength={() => 0.01}
-        // arcDashGap={() => 0.99}
-        // arcDashInitialGap={() => 1}
-        // arcDashAnimateTime={3000}
-        // arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
-        // arcAltitudeAutoScale={0}
-        // arcCurveResolution={64}
-        // arcCircularResolution={12}
+        arcColor='color'
+        arcStroke='stroke'
+        arcDashGap='gap'
+        arcDashLength='dash'
+        arcAltitudeAutoScale='scale'
+        arcDashAnimateTime='time'
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
