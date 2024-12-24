@@ -64,13 +64,10 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   );
 
   const globeMaterial = useMemo(() => {
-    const material = new MeshPhongMaterial({
-      color: new Color("#13111C"),
-      transparent: true,
-      opacity: 0.8,
-      wireframe: true,
-      wireframeLinewidth: 0.1
-    });
+    const material = new MeshPhongMaterial();
+    material.color = new Color("#13111C");
+    material.transparent = true;
+    material.opacity = 0.8;
     return material;
   }, []);
 
@@ -104,45 +101,21 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     return null;
   }
 
-  // Generate grid dots
-  const gridDots = [];
-  for (let lat = -60; lat <= 60; lat += 30) {
-    for (let lng = -180; lng <= 180; lng += 30) {
-      gridDots.push({
-        lat,
-        lng,
-        size: 0.15,
-        color: "rgba(146,65,211, 0.3)"
-      });
+  // Generate hex points for the grid effect
+  const hexData = useMemo(() => {
+    const data = [];
+    for (let lat = -90; lat <= 90; lat += 2) {
+      for (let lng = -180; lng <= 180; lng += 2) {
+        data.push({
+          lat,
+          lng,
+          size: 0.1,
+          color: "rgba(146,65,211, 0.15)"
+        });
+      }
     }
-  }
-
-  // Generate lat/long lines
-  const gridLines = [];
-  // Latitude lines
-  for (let lat = -60; lat <= 60; lat += 30) {
-    const points = [];
-    for (let lng = -180; lng <= 180; lng += 5) {
-      points.push([lng, lat]);
-    }
-    gridLines.push({
-      coords: points,
-      color: "rgba(146,65,211, 0.2)",
-      lineWidth: 0.5
-    });
-  }
-  // Longitude lines
-  for (let lng = -180; lng <= 180; lng += 30) {
-    const points = [];
-    for (let lat = -60; lat <= 60; lat += 5) {
-      points.push([lng, lat]);
-    }
-    gridLines.push({
-      coords: points,
-      color: "rgba(146,65,211, 0.2)",
-      lineWidth: 0.5
-    });
-  }
+    return data;
+  }, []);
 
   return (
     <Globe
@@ -151,37 +124,21 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       height={size}
       globeMaterial={globeMaterial}
       animateIn={false}
-
-      // Grid lines
-      customLayerData={gridLines}
-      customThreeObject={d => {
-        const points = d.coords.map(([lng, lat]) => 
-          globeEl.current.getCoords(lat, lng, 1.02)
-        );
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-          color: d.color,
-          linewidth: d.lineWidth,
-          transparent: true
-        });
-        return new THREE.Line(geometry, material);
-      }}
       
-      // Points for datacenters
+      // Hex grid effect
+      hexPolygonsData={hexData}
+      hexPolygonResolution={3}
+      hexPolygonMargin={0.7}
+      hexPolygonColor={d => d.color}
+      
+      // Datacenter points
       pointsData={points}
       pointLat="lat"
       pointLng="lng"
-      pointColor={d => d.color}
+      pointColor="color"
       pointAltitude={0.01}
-      pointRadius={d => d.radius}
+      pointRadius="radius"
       pointLabel={d => `${d.region}: ${d.count}`}
-      
-      // Grid dots
-      hexPolygonsData={gridDots}
-      hexPolygonColor={d => d.color}
-      hexPolygonMargin={1}
-      hexPolygonCurvatureResolution={4}
-      hexPolygonResolution={3}
       
       // Atmosphere
       atmosphereColor="#1C1539"
@@ -189,7 +146,7 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       atmosphereGlowColor="#1C1539"
       backgroundColor="#13111C"
 
-      // Disable auto-rotate as we're handling it ourselves
+      // Remove built-in controls since we're handling rotation
       enablePointerInteraction={false}
     />
   );
