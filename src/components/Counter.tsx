@@ -109,7 +109,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         lat,
         lng,
         size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? "#5CC5B9" : "#9241D3",
+        color: region === currentRegion ? "#FFFFFF" : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -141,7 +141,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: "#FFFFFF",
+      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
       stroke: 1,
       gap: 0.02,
       dash: 0.02,
@@ -261,7 +261,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         // Arc configuration
         arcsData={arcData}
-        arcColor={() => "#FFFFFF"}
+        arcColor='color'
         arcStroke='stroke'
         arcDashGap='gap'
         arcDashLength='dash'
