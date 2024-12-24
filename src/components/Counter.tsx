@@ -142,6 +142,11 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       endLat: conn.to.lat,
       endLng: conn.to.lng,
       color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+      stroke: 1,
+      gap: 0.02,
+      dash: 0.02,
+      scale: 0.3,
+      time: 2000,
     })),
     [connections, currentRegion]
   );
@@ -256,16 +261,16 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         // Arc configuration
         arcsData={arcData}
-        arcColor="color"
-        arcStroke={1.5}
-        arcDashLength={() => 0.01}
-        arcDashGap={() => 0.99}
-        arcDashInitialGap={() => 1}
-        arcDashAnimateTime={3000}
-        arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
-        arcAltitudeAutoScale={0}
-        arcCurveResolution={64}
-        arcCircularResolution={12}
+        // arcColor="color"
+        // arcStroke={1.5}
+        // arcDashLength={() => 0.01}
+        // arcDashGap={() => 0.99}
+        // arcDashInitialGap={() => 1}
+        // arcDashAnimateTime={3000}
+        // arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
+        // arcAltitudeAutoScale={0}
+        // arcCurveResolution={64}
+        // arcCircularResolution={12}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
