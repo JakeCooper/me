@@ -16,6 +16,43 @@ interface CounterProps {
   currentRegion: string;
 }
 
+interface GlobeStyles {
+  opacity: number;
+  shininess: number;
+  emissive: Color;
+  emissiveIntensity: number;
+  atmosphereColor: string;
+  pointColor: string;
+  hexPolygonColor: string;
+  backgroundColor: string;
+  atmosphereAltitude: number;
+}
+
+const globeStyles: Record<"light" | "dark", GlobeStyles> = {
+  dark: {
+    opacity: 0.5,
+    shininess: 1.25,
+    pointColor: "#E835A0",
+    emissive: new Color("#ffffff"),
+    emissiveIntensity: 2,
+    atmosphereColor: "#1C1539",
+    backgroundColor: "#13111C",
+    hexPolygonColor: "#rgba(146,65,211, 0.5)",
+    atmosphereAltitude: 0.25,
+  },
+  light: {
+    opacity: 1,
+    shininess: 0,
+    emissive: new Color("#ffffff"),
+    emissiveIntensity: 2,
+    pointColor: "#E935A1",
+    atmosphereColor: "#DDA7FF",
+    atmosphereAltitude: 0.175,
+    backgroundColor: "#ffffff",
+    hexPolygonColor: "rgba(250, 45, 225, .65)",
+  },
+};
+
 let ReactGlobe: React.FC<GlobeProps & { ref: any }> = () => null;
 
 const MAP_CENTER = { lat: 30.773972, lng: -100.561668, altitude: 1.68 };
@@ -47,6 +84,24 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
     [regions, currentRegion]
   );
 
+  const styles: GlobeStyles = useMemo(
+    () => globeStyles["dark"],
+    [],
+  ); // TODO: Support darkmode switch
+
+  const globeMaterial = useMemo(() => {
+    const globeMaterial = new MeshPhongMaterial();
+    globeMaterial.color = new Color("#13111C");
+
+    globeMaterial.transparent = true;
+    globeMaterial.flatShading = true;
+    globeMaterial.opacity = styles.opacity;
+    globeMaterial.shininess = styles.shininess;
+    globeMaterial.emissive = styles.emissive;
+    globeMaterial.emissiveIntensity = styles.emissiveIntensity;
+    return globeMaterial;
+  }, [])
+
   // Auto-rotate
   useEffect(() => {
     const globe = globeEl.current;
@@ -69,8 +124,8 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         ref={globeEl}
         width={800}
         height={800}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        // globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
+        // bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         
         pointsData={pointsData}
         pointAltitude={0.01}
@@ -80,15 +135,15 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         pointLabel="label"
         pointRadius="size"
         
-        backgroundColor="rgba(0,0,0,0)"
-        atmosphereColor="#1C1539"
-        atmosphereAltitude={0.25}
+        backgroundColor={styles.backgroundColor}
+        atmosphereColor={styles.atmosphereColor}
+        atmosphereAltitude={styles.atmosphereAltitude}
 
+        hexPolygonColor={styles.hexPolygonColor}
         hexPolygonsData={regions}
         hexPolygonResolution={3}
         hexPolygonMargin={0.7}
         hexPolygonUseDots={true}
-        hexPolygonColor={() => "#4A148C"}
         hexPolygonAltitude={0.01}
       />
     </div>
