@@ -30,128 +30,63 @@ if (typeof window !== "undefined") {
 
 function GlobeViz({ regions, currentRegion }: CounterProps) {
   const globeEl = useRef<any>();
-  const [size, setSize] = React.useState(800);
-  const rotationTimer = useRef<number>();
-
-  // Update size on mount and handle resize
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSize(Math.min(window.innerWidth - 40, 800));
-
-      function handleResize() {
-        setSize(Math.min(window.innerWidth - 40, 800));
-      }
-
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
-
-  const points = useMemo(() => 
-    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
-      const regionData = regions.find(r => r.region === region);
-      return {
-        lat,
-        lng,
-        region,
-        count: regionData?.count ?? 0,
-        radius: region === currentRegion ? 0.8 : 0.5,
-        color: region === currentRegion ? "#E835A0" : "#9241D3",
-        height: 0.1,
-      };
-    }),
-    [regions, currentRegion]
-  );
-
-  const globeMaterial = useMemo(() => {
-    const material = new MeshPhongMaterial();
-    material.color = new Color("#13111C");
-    material.transparent = true;
-    material.opacity = 0.8;
-    return material;
-  }, []);
-
-  useEffect(() => {
-    if (!globeEl.current) return;
-
-    // Initial camera position
-    globeEl.current.pointOfView({ lat: 30, lng: 0, altitude: 2.5 });
-    
-    // Setup continuous rotation
-    let currentRotation = 0;
-    const animate = () => {
-      if (globeEl.current) {
-        currentRotation += 0.5;
-        globeEl.current.rotation({ lat: 30, lng: currentRotation });
-        rotationTimer.current = requestAnimationFrame(animate);
-      }
-    };
-    
-    animate();
-
-    return () => {
-      if (rotationTimer.current) {
-        cancelAnimationFrame(rotationTimer.current);
-      }
-    };
-  }, []);
-
-  // Only render on client side
-  if (typeof window === 'undefined') {
-    return null;
-  }
+  const [ready, setReady] = React.useState(false);
 
   // Generate hex points for the grid effect
   const hexData = useMemo(() => {
     const data = [];
     for (let lat = -90; lat <= 90; lat += 2) {
       for (let lng = -180; lng <= 180; lng += 2) {
-        data.push({
-          lat,
-          lng,
-          size: 0.1,
-          color: "rgba(146,65,211, 0.15)"
-        });
+        data.push([lng, lat]);
       }
     }
     return data;
   }, []);
 
+  // Setup points data
+  const pointsData = useMemo(() => 
+    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => ({
+      lat,
+      lng,
+      size: region === currentRegion ? 1.5 : 1,
+      color: region === currentRegion ? "#E835A0" : "#9241D3",
+      label: `${region}: ${regions.find(r => r.region === region)?.count ?? 0}`
+    })),
+    [regions, currentRegion]
+  );
+
+  useEffect(() => {
+    let Globe = null;
+    if (typeof window !== 'undefined') {
+      Globe = require('react-globe.gl').default;
+      setReady(true);
+    }
+  }, []);
+
+  if (!ready || typeof window === 'undefined') {
+    return null;
+  }
+
+  const Globe = require('react-globe.gl').default;
   return (
     <Globe
       ref={globeEl}
-      width={size}
-      height={size}
-      globeMaterial={globeMaterial}
-      animateIn={false}
+      width={800}
+      height={800}
+      globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
       
-      // Hex grid effect
-      hexPolygonsData={hexData}
-      hexPolygonResolution={3}
-      hexPolygonMargin={0.7}
-      hexPolygonColor={d => d.color}
-      
-      // Datacenter points
-      pointsData={points}
+      pointsData={pointsData}
       pointLat="lat"
       pointLng="lng"
       pointColor="color"
-      pointAltitude={0.01}
-      pointRadius="radius"
-      pointLabel={d => `${d.region}: ${d.count}`}
+      pointLabel="label"
+      pointRadius="size"
       
-      // Atmosphere
-      atmosphereColor="#1C1539"
-      atmosphereAltitude={0.25}
-      atmosphereGlowColor="#1C1539"
       backgroundColor="#13111C"
-
-      // Remove built-in controls since we're handling rotation
-      enablePointerInteraction={false}
+      atmosphereColor="#1C1539"
     />
   );
 }
-
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
