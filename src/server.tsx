@@ -291,9 +291,9 @@ const server = Bun.serve({
       try {
         const data = JSON.parse(message.toString());
         if (data.type === "increment") {
-          const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                    req.headers.get('x-real-ip') || 
-                    'unknown';
+          // For WebSocket connections, use a generic IP lookup
+          // You might want to store the IP when the WebSocket connects initially
+          const ip = "unknown";
           await incrementCounter(ip);
         }
       } catch (error) {
