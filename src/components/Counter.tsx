@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import * as topojson from 'topojson-client';
 import world from './world.json';
 import type { GlobeProps } from "react-globe.gl";
+import { countries } from "./countries";
 
 interface RegionData {
   region: string;
@@ -140,7 +141,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         atmosphereAltitude={styles.atmosphereAltitude}
 
         hexPolygonColor={styles.hexPolygonColor}
-        hexPolygonsData={regions}
+        hexPolygonsData={countries.features}
         hexPolygonResolution={3}
         hexPolygonMargin={0.7}
         hexPolygonUseDots={true}
