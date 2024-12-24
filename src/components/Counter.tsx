@@ -49,7 +49,7 @@ const globeStyles: Record<"light" | "dark", GlobeStyles> = {
     emissiveIntensity: 2,
     atmosphereColor: "#1C1539",
     backgroundColor: "#13111C",
-    hexPolygonColor: "rgba(146,65,211, 0.5)",
+    hexPolygonColor: "rgba(22, 186, 166, 0.7)",
     atmosphereAltitude: 0.25,
   },
   light: {
@@ -92,7 +92,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         lat,
         lng,
         size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? "#E835A0" : "#9241D3",
+        color: region === currentRegion ? "#5CC5B9" : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -124,7 +124,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3"
+      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3"
     })),
     [connections, currentRegion]
   );
@@ -143,8 +143,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
   return (
     <div style={{ 
       background: 'radial-gradient(circle at center, #13111C 0%, #090818 100%)',
-      padding: '2rem',
-      borderRadius: '8px'
     }}>
       <ReactGlobe
         ref={globeEl}
@@ -226,21 +224,33 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcDashGap={0.1}
         arcDashAnimateTime={2000}
         arcStroke={1}
-        arcAltitudeAutoScale={1}
+        arcAltitudeAutoScale={0.8}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
-        atmosphereAltitude={styles.atmosphereAltitude}
+        atmosphereAltitude={0.1}
 
         hexPolygonsData={countries.features}
         hexPolygonColor={() => styles.hexPolygonColor}
         hexPolygonResolution={3}
         hexPolygonUseDots={true}
         hexPolygonMargin={0.7}
+        
+        showGlobe={true}
+        showAtmosphere={false}
+        globeMaterial={
+          new THREE.MeshPhongMaterial({
+            color: '#13111C',
+            transparent: true,
+            opacity: 0.95,
+            shininess: 0.2
+          })
+        }
       />
     </div>
   );
 }
+
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
@@ -376,20 +386,47 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 min-h-screen bg-[#13111C]">
+    <div style={{ 
+      display: 'grid',
+      gridTemplateColumns: '500px 1fr',
+      minHeight: '100vh',
+      background: '#13111C',
+      color: 'white',
+      margin: 0,
+      padding: 0,
+      width: '100vw',
+      position: 'absolute',
+      left: 0,
+      top: 0
+    }}>
       {/* Left Column - Content */}
-      <div className="p-8">
-        <h1 className="text-4xl font-bold mb-6">Hello</h1>
+      <div style={{ 
+        padding: '2rem',
+        height: '100vh',
+        overflowY: 'auto'
+      }}>
+        <h1 style={{ 
+          fontSize: '2.5rem', 
+          fontWeight: 'bold', 
+          marginBottom: '1.5rem',
+          marginTop: 0
+        }}>
+          Hello
+        </h1>
         
-        <p className="mb-4">
+        <p style={{ 
+          marginBottom: '1rem',
+          fontSize: '1rem',
+          lineHeight: '1.5'
+        }}>
           My name is Jake Cooper. I'm a technologist originally from Canada.
         </p>
         
-        <p className="mb-4">
+        <p style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
           I currently live in San Francisco, where I run{" "}
           <a 
             href="https://railway.com"
-            className="text-[#E835A0] hover:underline"
+            style={{ color: '#E835A0', textDecoration: 'none' }}
           >
             Railway.com
           </a>
@@ -397,44 +434,73 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           from California to Japan and everywhere in between.
         </p>
         
-        <p className="mb-4">
+        <p style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
           You can deploy anything on Railway, including this website.
         </p>
         
-        <p className="font-mono mb-4">
+        <p style={{ 
+          fontFamily: 'monospace',
+          marginBottom: '1rem',
+          lineHeight: '1.5'
+        }}>
           It's served via IP address 66.33.22.11 (φ^-1), by ASN 400940, and runs 
           in {regions.length} different locations, across 3 different countries, 
           on servers we own.
         </p>
         
-        <p className="italic mb-8">
+        <p style={{ 
+          fontStyle: 'italic',
+          marginBottom: '2rem',
+          lineHeight: '1.5'
+        }}>
           All requests to this website can be seen in real-time to your right.
         </p>
 
-        <div className="space-y-2">
-          <div>
+        <div>
+          <div style={{ marginBottom: '0.5rem' }}>
             Your Region ({currentRegion}): {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
           </div>
           <button
             onClick={incrementCounter}
             disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
-            className="bg-[#E835A0] px-4 py-2 rounded"
+            style={{
+              backgroundColor: '#5CC5B9',
+              padding: '0.5rem 1rem',
+              borderRadius: '0.25rem',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              opacity: (!ws || ws.readyState !== WebSocket.OPEN || !userLocation) ? 0.5 : 1,
+              fontSize: '0.875rem'
+            }}
           >
             Increment Counter
           </button>
-          <div className="text-sm opacity-50">
+          <div style={{ 
+            fontSize: '0.875rem',
+            opacity: 0.5,
+            marginTop: '0.5rem'
+          }}>
             Status: {status}
           </div>
         </div>
       </div>
 
       {/* Right Column - Globe */}
-      <div>
+      <div style={{ 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#13111C',
+        overflow: 'hidden'
+      }}>
         <GlobeViz 
           regions={localRegions} 
           currentRegion={currentRegion} 
           connections={connections} 
           userLocation={userLocation}
+          width={1000}
+          height={1000}
         />
       </div>
     </div>
