@@ -275,18 +275,29 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         if (data.type === "state" && Array.isArray(data.regions)) {
           setLocalRegions(data.regions);
         }
-        if (data.type === "update" && data.connection) {
-          // Add new connection with fade-out
-          setConnections(prev => [...prev, data.connection]);
-          // Remove connection after animation
-          setTimeout(() => {
-            setConnections(prev => 
-              prev.filter(c => 
-                c.from.lat !== data.connection.from.lat || 
-                c.from.lng !== data.connection.from.lng
+        if (data.type === "update") {
+          if (data.region) {
+            setLocalRegions(prevRegions =>
+              prevRegions.map(region =>
+                region.region === data.region
+                  ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
+                  : region
               )
             );
-          }, 2000);
+          }
+          if (data.connection) {
+            // Add new connection with fade-out
+            setConnections(prev => [...prev, data.connection]);
+            // Remove connection after animation
+            setTimeout(() => {
+              setConnections(prev =>
+                prev.filter(c =>
+                  c.from.lat !== data.connection.from.lat ||
+                  c.from.lng !== data.connection.from.lng
+                )
+              );
+            }, 2000);
+          }
         }
       };
 
@@ -323,13 +334,13 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       }));
   
       // Optimistically update the counter in local state
-      // setLocalRegions((prevRegions) => 
-      //   prevRegions.map(region => 
-      //     region.region === currentRegion 
-      //       ? { ...region, count: region.count + 1 } 
-      //       : region
-      //   )
-      // );
+      setLocalRegions((prevRegions) => 
+        prevRegions.map(region => 
+          region.region === currentRegion 
+            ? { ...region, count: region.count + 1 } 
+            : region
+        )
+      );
     }
   };
 
