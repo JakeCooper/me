@@ -64,10 +64,13 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   );
 
   const globeMaterial = useMemo(() => {
-    const material = new MeshPhongMaterial();
-    material.color = new Color("#13111C");
-    material.transparent = true;
-    material.opacity = 0.8;
+    const material = new MeshPhongMaterial({
+      color: new Color("#13111C"),
+      transparent: true,
+      opacity: 0.8,
+      wireframe: true,
+      wireframeLinewidth: 0.1
+    });
     return material;
   }, []);
 
@@ -101,17 +104,44 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     return null;
   }
 
-  // Generate points for the dotted effect
-  const hexPoints = [];
-  for (let lat = -90; lat <= 90; lat += 3) {
-    for (let lng = -180; lng <= 180; lng += 3) {
-      hexPoints.push({
+  // Generate grid dots
+  const gridDots = [];
+  for (let lat = -60; lat <= 60; lat += 30) {
+    for (let lng = -180; lng <= 180; lng += 30) {
+      gridDots.push({
         lat,
         lng,
-        size: 0.2,
-        color: "rgba(146,65,211, 0.1)"
+        size: 0.15,
+        color: "rgba(146,65,211, 0.3)"
       });
     }
+  }
+
+  // Generate lat/long lines
+  const gridLines = [];
+  // Latitude lines
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const points = [];
+    for (let lng = -180; lng <= 180; lng += 5) {
+      points.push([lng, lat]);
+    }
+    gridLines.push({
+      coords: points,
+      color: "rgba(146,65,211, 0.2)",
+      lineWidth: 0.5
+    });
+  }
+  // Longitude lines
+  for (let lng = -180; lng <= 180; lng += 30) {
+    const points = [];
+    for (let lat = -60; lat <= 60; lat += 5) {
+      points.push([lng, lat]);
+    }
+    gridLines.push({
+      coords: points,
+      color: "rgba(146,65,211, 0.2)",
+      lineWidth: 0.5
+    });
   }
 
   return (
@@ -121,45 +151,37 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       height={size}
       globeMaterial={globeMaterial}
       animateIn={false}
-      
-      // Dotted globe effect
-      hexPolygonsData={hexPoints}
-      hexPolygonResolution={3}
-      hexPolygonMargin={0.7}
-      hexPolygonColor={d => d.color}
+
+      // Grid lines
+      customLayerData={gridLines}
+      customThreeObject={d => {
+        const points = d.coords.map(([lng, lat]) => 
+          globeEl.current.getCoords(lat, lng, 1.02)
+        );
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+          color: d.color,
+          linewidth: d.lineWidth,
+          transparent: true
+        });
+        return new THREE.Line(geometry, material);
+      }}
       
       // Points for datacenters
-      customLayerData={points}
-      customThreeObject={d => {
-        const sprite = new THREE.Sprite(
-          new THREE.SpriteMaterial({ 
-            map: new THREE.CanvasTexture((() => {
-              const canvas = document.createElement('canvas');
-              canvas.width = 128;
-              canvas.height = 64;
-              const ctx = canvas.getContext('2d')!;
-              ctx.fillStyle = d.color;
-              ctx.beginPath();
-              ctx.arc(32, 32, d.radius * 20, 0, 2 * Math.PI);
-              ctx.fill();
-              
-              // Add count text
-              ctx.font = 'bold 24px Arial';
-              ctx.fillStyle = 'white';
-              ctx.textAlign = 'center';
-              ctx.fillText(d.count.toString(), 96, 32);
-              return canvas;
-            })()),
-            transparent: true,
-            opacity: 0.8
-          })
-        );
-        sprite.scale.set(d.radius * 20, d.radius * 10, 1);
-        return sprite;
-      }}
-      customThreeObjectUpdate={(obj, d) => {
-        Object.assign(obj.position, globeEl.current.getCoords(d.lat, d.lng, d.height));
-      }}
+      pointsData={points}
+      pointLat="lat"
+      pointLng="lng"
+      pointColor={d => d.color}
+      pointAltitude={0.01}
+      pointRadius={d => d.radius}
+      pointLabel={d => `${d.region}: ${d.count}`}
+      
+      // Grid dots
+      hexPolygonsData={gridDots}
+      hexPolygonColor={d => d.color}
+      hexPolygonMargin={1}
+      hexPolygonCurvatureResolution={4}
+      hexPolygonResolution={3}
       
       // Atmosphere
       atmosphereColor="#1C1539"
