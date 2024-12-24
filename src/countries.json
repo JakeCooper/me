@@ -1,0 +1,23 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-180, 85],
+              [180, 85],
+              [180, -85],
+              [-180, -85],
+              [-180, 85]
+            ]
+          ]
+        },
+        "properties": {
+          "name": "World"
+        }
+      }
+    ]
+  }
