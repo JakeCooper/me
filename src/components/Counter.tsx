@@ -316,10 +316,20 @@ export function Counter({ regions, currentRegion }: CounterProps) {
 
   const incrementCounter = () => {
     if (ws?.readyState === WebSocket.OPEN && userLocation) {
+      // Send increment message to WebSocket
       ws.send(JSON.stringify({ 
         type: "increment",
         location: userLocation
       }));
+  
+      // Optimistically update the counter in local state
+      setLocalRegions((prevRegions) => 
+        prevRegions.map(region => 
+          region.region === currentRegion 
+            ? { ...region, count: region.count + 1 } 
+            : region
+        )
+      );
     }
   };
 
