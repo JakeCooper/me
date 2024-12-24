@@ -268,6 +268,12 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         console.log('WebSocket connected');
         setStatus("connected");
         setWs(websocket);
+  
+        // Send "connected" message to server
+        websocket.send(JSON.stringify({
+          type: "connected",
+          location: userLocation,
+        }));
       };
 
       websocket.onmessage = (event) => {
@@ -299,6 +305,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             }, 2000);
           }
         }
+        if (data.type === "connected") {
+          if (data.region) {
+            setLocalRegions(prevRegions =>
+              prevRegions.map(region =>
+                region.region === data.region
+                  ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
+                  : region
+              )
+            );
+          }
+        }
       };
 
       websocket.onclose = () => {
@@ -323,7 +340,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       clearTimeout(reconnectTimer);
       ws.close();
     };
-  }, []);
+  }, [userLocation]);
 
   const incrementCounter = () => {
     if (ws?.readyState === WebSocket.OPEN && userLocation) {

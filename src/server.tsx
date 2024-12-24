@@ -213,6 +213,16 @@ const server = Bun.serve({
       // Send current state from cache immediately
       const regions = Array.from(latestCounts.values());
       ws.send(JSON.stringify({ type: "state", regions }));
+    
+      // Broadcast "connected" event to all clients
+      const update = {
+        type: "connected",
+        region: REGION,
+        count: latestCounts.get(REGION)?.count ?? 0,
+        lastUpdate: new Date().toISOString(),
+      };
+      const wsMessage = JSON.stringify(update);
+      clients.forEach(client => client.send(wsMessage));
     },
     close(ws) {
       clients.delete(ws);
@@ -220,6 +230,46 @@ const server = Bun.serve({
     async message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
+        if (data.type === "connected" && data.location) {
+          // Increment counter
+          const newValue = await incrementCounter();
+    
+          // Create update message with location data
+          const update = {
+            type: "update",
+            region: REGION,
+            count: newValue,
+            lastUpdate: new Date().toISOString(),
+            connection: {
+              from: {
+                lat: data.location.lat,
+                lng: data.location.lng,
+                city: "Unknown",
+                country: "Unknown"
+              },
+              to: {
+                region: REGION,
+                lat: DATACENTER_LOCATIONS[REGION][0],
+                lng: DATACENTER_LOCATIONS[REGION][1]
+              }
+            }
+          };
+    
+          // Update local cache and send update to all connected clients
+          latestCounts.set(REGION, {
+            region: REGION,
+            count: newValue,
+            lastUpdate: update.lastUpdate
+          });
+          const wsMessage = JSON.stringify(update);
+          clients.forEach(client => client.send(wsMessage));
+    
+          // Broadcast to all regions via Redis
+          for (const [_, client] of redisClients.entries()) {
+            await client.publish('counter-updates', JSON.stringify(update));
+          }
+        }
+        
         if (data.type === "increment" && data.location) {
           // Increment counter
           const newValue = await incrementCounter();
