@@ -50,9 +50,8 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   );
 
   useEffect(() => {
-    let Globe = null;
     if (typeof window !== 'undefined') {
-      Globe = require('react-globe.gl').default;
+      ReactGlobe = require('react-globe.gl').default;
       setReady(true);
     }
   }, []);
