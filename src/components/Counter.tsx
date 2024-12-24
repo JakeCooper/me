@@ -134,6 +134,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     [],
   );
 
+  console.log(connections, currentRegion);
+
   // Setup arcs data
   const arcData = useMemo(() => 
     connections.map(conn => ({
