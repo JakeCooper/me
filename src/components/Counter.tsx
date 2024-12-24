@@ -376,46 +376,44 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#13111C] text-white p-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column - Bio */}
-        <div className="space-y-6 pr-8">
-          <h1 className="text-4xl font-bold mb-6">Hello</h1>
-          
-          <div className="space-y-4 text-lg leading-relaxed">
-            <p>
+    <div className="min-h-screen bg-[#13111C]">
+      <div className="container mx-auto flex flex-col lg:flex-row min-h-screen">
+        {/* Left Column - Content */}
+        <div className="lg:w-1/2 p-8 lg:p-16 flex flex-col justify-center text-white">
+          <div className="max-w-xl space-y-6">
+            <h1 className="text-4xl font-bold">Hello</h1>
+            
+            <p className="text-xl">
               My name is Jake Cooper. I'm a technologist originally from Canada.
             </p>
             
-            <p>
+            <p className="text-xl">
               I currently live in San Francisco, where I run{" "}
-              <a href="https://railway.app" className="text-[#E835A0] hover:underline">
+              <a 
+                href="https://railway.com"
+                className="text-[#E835A0] hover:underline"
+              >
                 Railway.com
               </a>
               , an infrastructure startup. We're remote, employing 25+ around the world, 
               from California to Japan and everywhere in between.
             </p>
             
-            <p>
+            <p className="text-xl">
               You can deploy anything on Railway, including this website.
             </p>
             
-            <p className="font-mono text-sm opacity-75">
-              It's served via IP address 66.33.22.11 (<strong>φ^-1</strong>), 
-              by ASN 400940, and runs in {regions.length} different locations, 
-              across 3 different countries, on servers we own.
+            <p className="font-mono text-lg opacity-75">
+              It's served via IP address 66.33.22.11 (φ^-1), by ASN 400940, and runs 
+              in {regions.length} different locations, across 3 different countries, 
+              on servers we own.
             </p>
             
-            <p className="italic">
+            <p className="text-xl italic">
               All requests to this website can be seen in real-time to your right.
             </p>
-          </div>
-        </div>
 
-        {/* Right Column - Globe */}
-        <div>
-          <div className="rounded-lg bg-black/30 backdrop-blur border border-white/10">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-4 pt-4">
               <div>
                 <strong>Your Region ({currentRegion}):</strong>{" "}
                 {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
@@ -431,16 +429,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
                 Status: {status}
               </div>
             </div>
-
-            <div className="flex justify-center">
-              <GlobeViz 
-                regions={localRegions} 
-                currentRegion={currentRegion} 
-                connections={connections} 
-                userLocation={userLocation}
-              />
-            </div>
           </div>
+        </div>
+
+        {/* Right Column - Globe */}
+        <div className="lg:w-1/2 flex items-center justify-center p-8">
+          <GlobeViz 
+            regions={localRegions} 
+            currentRegion={currentRegion} 
+            connections={connections} 
+            userLocation={userLocation}
+          />
         </div>
       </div>
     </div>
