@@ -112,8 +112,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3",
-      arcAltitude: 0.2, // Higher for longer arcs, lower for shorter ones
+      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3"
     })),
     [connections, currentRegion]
   );
@@ -213,7 +212,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
         arcDashGap={0.1}
         arcDashAnimateTime={2000}
         arcStroke={1}
-        arcAltitudeAutoScale={0.5}
+        arcAltitudeAutoScale={1}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
