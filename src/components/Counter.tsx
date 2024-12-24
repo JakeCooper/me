@@ -108,8 +108,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         size: region === currentRegion ? 1.5 : 1,
         color: region === currentRegion ? "#E835A0" : "#9241D3",
         region,
-        count: regionData?.count ?? 0,
-        altitude: 0.01 // Keep points close to surface
+        count: regionData?.count ?? 0
       };
     }),
     [regions, currentRegion]
@@ -142,19 +141,81 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         width={800}
         height={800}
         
-        // Points with custom rendering
-        pointsData={pointsData}
-        pointColor="color"
-        pointAltitude={0.01}
-        pointRadius="size"
-        pointResolution={16}
-        
-        // Custom labels for points
-        labelText="count"
-        labelSize={2}
-        labelAltitude={0.01}
-        labelDotRadius={0.5}
-        labelColor={() => 'white'}
+        customLayerData={pointsData}
+        customThreeObject={d => {
+          // Create a group to hold both the point and label
+          const group = new THREE.Group();
+
+          // Create the point
+          const point = new THREE.Mesh(
+            new THREE.SphereGeometry(d.size, 16, 16),
+            new THREE.MeshBasicMaterial({ color: d.color })
+          );
+          group.add(point);
+
+          // Create label with white text on dark background
+          const canvas = document.createElement('canvas');
+          canvas.width = 128;
+          canvas.height = 64;
+          const ctx = canvas.getContext('2d')!;
+          
+          // Draw semi-transparent background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
+          ctx.fill();
+          
+          // Draw text
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 32px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
+
+          const texture = new THREE.CanvasTexture(canvas);
+          const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true
+          });
+          const label = new THREE.Sprite(spriteMaterial);
+          label.scale.set(10, 5, 1);
+          label.position.y = 10; // Adjust this value to control height above point
+          group.add(label);
+
+          return group;
+        }}
+        customThreeObjectUpdate={(obj, d) => {
+          if (!obj || !globeEl.current) return;
+          
+          const pos = globeEl.current.getCoords(d.lat, d.lng, 0.01);
+          obj.position.set(pos.x, pos.y, pos.z);
+          
+          // Update label text
+          const label = obj.children[1];
+          if (label) {
+            const spriteMaterial = label.material as THREE.SpriteMaterial;
+            const canvas = spriteMaterial.map!.source.data as HTMLCanvasElement;
+            const ctx = canvas.getContext('2d')!;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Redraw background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
+            ctx.fill();
+            
+            // Redraw text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
+            
+            spriteMaterial.map!.needsUpdate = true;
+          }
+
+          // Make label face the camera
+          obj.quaternion.copy(globeEl.current.camera().quaternion);
+        }}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
@@ -169,7 +230,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
       />
     </div>
   );
-};
+}
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
