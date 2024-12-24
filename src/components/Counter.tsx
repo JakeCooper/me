@@ -94,7 +94,6 @@ if (typeof window !== 'undefined') {
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
-  const [arcDashOffset, setArcDashOffset] = React.useState(1);
 
   useEffect(() => {
     if (globeEl.current) {
@@ -146,21 +145,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     })),
     [connections, currentRegion]
   );
-
-  useEffect(() => {
-    const animateArc = () => {
-      setArcDashOffset(1);
-      const timer = setTimeout(() => {
-        setArcDashOffset(0);
-      }, 50);
-  
-      return () => {
-        clearTimeout(timer);
-      };
-    };
-  
-    animateArc();
-  }, [connections]);
 
   const getArcHeight = (startLat: number, startLng: number, endLat: number, endLng: number) => {
     // Convert to radians
@@ -274,10 +258,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcsData={arcData}
         arcColor="color"
         arcStroke={1.5}
-        arcDashLength={0.5}
-        arcDashGap={1}
-        arcDashOffset={arcDashOffset}
-        arcDashInitialGap={1}
+        arcDashLength={() => 0.01}
+        arcDashGap={() => 0.99}
+        arcDashInitialGap={() => 1}
         arcDashAnimateTime={3000}
         arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
         arcAltitudeAutoScale={0}
