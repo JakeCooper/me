@@ -88,8 +88,8 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         ref={globeEl}
         width={800}
         height={800}
-        // globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
-        // bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         
         pointsData={pointsData}
         pointAltitude={0.01}
@@ -103,6 +103,7 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
         atmosphereAltitude={0.25}
+      
 
         hexPolygonsData={regions}
         hexPolygonResolution={3}
