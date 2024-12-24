@@ -212,7 +212,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
         arcDashGap={0.1}
         arcDashAnimateTime={2000}
         arcStroke={1}
-        arcAltitudeAutoScale={0.5}
+        arcAltitudeAutoScale={1}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
