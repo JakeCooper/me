@@ -258,8 +258,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcsData={arcData}
         arcColor="color"
         arcStroke={1.5}
-        arcDashLength={1}
-        arcDashGap={0}
+        arcDashLength={0.5}
+        arcDashGap={0.1}
         arcDashAnimateTime={1000}
         arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
         arcAltitudeAutoScale={0}
