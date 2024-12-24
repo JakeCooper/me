@@ -1,0 +1,20 @@
+{
+  "type": "Topology",
+  "objects": {
+    "countries": {
+      "type": "GeometryCollection",
+      "geometries": [
+        {
+          "type": "MultiPolygon",
+          "coordinates": [[[[50,30],[60,30],[60,20],[50,20],[50,30]]]],
+          "properties": {"name": "Sample Country"}
+        }
+      ]
+    }
+  },
+  "transform": {
+    "scale": [0.036003600360036005,0.017361589674592462],
+    "translate": [-180,-90]
+  },
+  "arcs": []
+}
