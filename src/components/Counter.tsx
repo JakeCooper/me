@@ -247,7 +247,9 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
-  const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(
+    (window as any).__INITIAL_DATA__.userLocation || null
+  );
 
   // Get user location when component mounts
   useEffect(() => {

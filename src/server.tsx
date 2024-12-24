@@ -176,6 +176,20 @@ const server = Bun.serve({
       });
     }
   
+    // Get client's IP address
+    const clientIp = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
+  
+    // Make a request to the IP geolocation service
+    let userLocation = null;
+    try {
+      const locationResponse = await fetch(`https://ipinfo.io/${clientIp}/json`);
+      const locationData = await locationResponse.json();
+      const { lat, lng } = locationData.loc.split(',').map(parseFloat);
+      userLocation = { lat, lng };
+    } catch (error) {
+      console.error('Error fetching user location:', error);
+    }
+  
     // Server-side render
     const regions = await getAllCounts();
     const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
@@ -192,7 +206,8 @@ const server = Bun.serve({
             <script>
               window.__INITIAL_DATA__ = {
                 regions: ${JSON.stringify(regions)},
-                currentRegion: "${REGION}"
+                currentRegion: "${REGION}",
+                userLocation: ${JSON.stringify(userLocation)}
               };
             </script>
           </body>
