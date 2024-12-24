@@ -323,13 +323,13 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       }));
   
       // Optimistically update the counter in local state
-      setLocalRegions((prevRegions) => 
-        prevRegions.map(region => 
-          region.region === currentRegion 
-            ? { ...region, count: region.count + 1 } 
-            : region
-        )
-      );
+      // setLocalRegions((prevRegions) => 
+      //   prevRegions.map(region => 
+      //     region.region === currentRegion 
+      //       ? { ...region, count: region.count + 1 } 
+      //       : region
+      //   )
+      // );
     }
   };
 

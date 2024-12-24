@@ -245,13 +245,6 @@ const server = Bun.serve({
             }
           };
           
-          // Update local cache
-          latestCounts.set(REGION, {
-            region: REGION,
-            count: newValue,
-            lastUpdate: update.lastUpdate
-          });
-          
           // Send update to all connected WebSocket clients
           const wsMessage = JSON.stringify(update);
           clients.forEach(client => client.send(wsMessage));
