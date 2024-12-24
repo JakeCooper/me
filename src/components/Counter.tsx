@@ -277,8 +277,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+  const initialConnection = React.useRef(true);
 
-  // Get user location when component mounts
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -290,7 +290,6 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         },
         (error) => {
           console.error("Error getting location:", error);
-          // Fallback to datacenter location
           setUserLocation({
             lat: DATACENTER_LOCATIONS[currentRegion][0],
             lng: DATACENTER_LOCATIONS[currentRegion][1]
@@ -302,8 +301,12 @@ export function Counter({ regions, currentRegion }: CounterProps) {
 
   useEffect(() => {
     let reconnectTimer: number;
+    let isConnecting = false;
     
     function connect() {
+      if (isConnecting) return;
+      isConnecting = true;
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const websocket = new WebSocket(`${protocol}//${window.location.host}`);
       
@@ -311,8 +314,9 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         console.log('WebSocket connected');
         setStatus("connected");
         setWs(websocket);
+        isConnecting = false;
+        initialConnection.current = false;
   
-        // Send "connected" message to server
         websocket.send(JSON.stringify({
           type: "connected",
           location: userLocation,
@@ -335,9 +339,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             );
           }
           if (data.connection) {
-            // Add new connection with fade-out
             setConnections(prev => [...prev, data.connection]);
-            // Remove connection after animation
             setTimeout(() => {
               setConnections(prev =>
                 prev.filter(c =>
@@ -348,30 +350,24 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             }, 2000);
           }
         }
-        if (data.type === "connected") {
-          if (data.region) {
-            setLocalRegions(prevRegions =>
-              prevRegions.map(region =>
-                region.region === data.region
-                  ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
-                  : region
-              )
-            );
-          }
-        }
       };
 
       websocket.onclose = () => {
-        console.log('WebSocket disconnected, attempting to reconnect...');
-        setStatus("reconnecting");
+        if (!initialConnection.current) {
+          console.log('WebSocket disconnected, attempting to reconnect...');
+          setStatus("reconnecting");
+        }
         setWs(null);
+        isConnecting = false;
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connect, 2000) as unknown as number;
       };
 
       websocket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        websocket.close();
+        if (!initialConnection.current) {
+          websocket.close();
+        }
       };
 
       return websocket;
@@ -500,7 +496,10 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             opacity: 0.5,
             marginTop: '0.5rem'
           }}>
-            Status: {status}
+            {/* Only show status if we're connected or it's not the initial load */}
+            {(!initialConnection.current || status === "connected") && (
+              <>Status: {status}</>
+            )}
           </div>
         </div>
       </div>
