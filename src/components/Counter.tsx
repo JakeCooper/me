@@ -142,10 +142,35 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       endLat: conn.to.lat,
       endLng: conn.to.lng,
       color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      altitude: 0.4  // Fixed altitude for consistent arc height
+      alt: 0.3,    // Fixed altitude
+      progress: 0  // Start at 0
     })),
     [connections, currentRegion]
   );
+
+  // Animate arc progress
+  useEffect(() => {
+    if (arcData.length > 0) {
+      const startTime = Date.now();
+      const duration = 1000; // 1 second animation
+
+      const animate = () => {
+        const now = Date.now();
+        const progress = Math.min(1, (now - startTime) / duration);
+        
+        arcData.forEach(arc => {
+          arc.progress = progress;
+        });
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+
+      requestAnimationFrame(animate);
+    }
+  }, [arcData]);
+  
 
   // Auto-rotate
   useEffect(() => {
@@ -238,17 +263,15 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
           obj.quaternion.copy(globeEl.current.camera().quaternion);
         }}
         
-        // Updated arc configuration
+        // Arc configuration
         arcsData={arcData}
         arcColor="color"
-        arcDashLength={1}            // Full arc visible
-        arcDashGap={0}              // No gap in the arc
-        arcDashInitialGap={1}       // Start with full gap (invisible)
-        arcDashAnimateTime={1000}   // Animation duration
-        arcStroke={1}               // Arc thickness
-        arcAltitude={(d) => d.altitude} // Use fixed altitude from data
-        arcCurveResolution={64}     // Smoother curves
-        arcCircularResolution={32}  // Smoother circular cross-section
+        arcAltitude="alt"
+        arcStroke={1}
+        arcCurveResolution={64}
+        arcCircularResolution={48}
+        arcTransitionDuration={0}  // Disable default transition
+        getArcProgress={d => d.progress}  // Use our custom progress
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
