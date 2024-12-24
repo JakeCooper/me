@@ -142,35 +142,26 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       endLat: conn.to.lat,
       endLng: conn.to.lng,
       color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      alt: 0.3,    // Fixed altitude
-      progress: 0  // Start at 0
     })),
     [connections, currentRegion]
   );
 
-  // Animate arc progress
-  useEffect(() => {
-    if (arcData.length > 0) {
-      const startTime = Date.now();
-      const duration = 1000; // 1 second animation
+  const getArcHeight = (startLat: number, startLng: number, endLat: number, endLng: number) => {
+    // Convert to radians
+    const startLatRad = startLat * Math.PI / 180;
+    const startLngRad = startLng * Math.PI / 180;
+    const endLatRad = endLat * Math.PI / 180;
+    const endLngRad = endLng * Math.PI / 180;
 
-      const animate = () => {
-        const now = Date.now();
-        const progress = Math.min(1, (now - startTime) / duration);
-        
-        arcData.forEach(arc => {
-          arc.progress = progress;
-        });
+    // Calculate great circle distance
+    const distance = Math.acos(
+      Math.sin(startLatRad) * Math.sin(endLatRad) +
+      Math.cos(startLatRad) * Math.cos(endLatRad) * Math.cos(endLngRad - startLngRad)
+    );
 
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        }
-      };
-
-      requestAnimationFrame(animate);
-    }
-  }, [arcData]);
-  
+    // Return height that scales with distance but has a minimum
+    return Math.max(0.2, distance * 0.5);
+  };  
 
   // Auto-rotate
   useEffect(() => {
@@ -266,12 +257,14 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         // Arc configuration
         arcsData={arcData}
         arcColor="color"
-        arcAltitude="alt"
-        arcStroke={1}
+        arcStroke={1.5}
+        arcDashLength={1}
+        arcDashGap={0}
+        arcDashAnimateTime={1000}
+        arcAltitude={d => getArcHeight(d.startLat, d.startLng, d.endLat, d.endLng)}
+        arcAltitudeAutoScale={0}
         arcCurveResolution={64}
-        arcCircularResolution={48}
-        arcTransitionDuration={0}  // Disable default transition
-        getArcProgress={d => d.progress}  // Use our custom progress
+        arcCircularResolution={12}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
