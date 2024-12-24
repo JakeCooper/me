@@ -32,17 +32,6 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   const globeEl = useRef<any>();
   const [ready, setReady] = React.useState(false);
 
-  // Generate hex points for the grid effect
-  const hexData = useMemo(() => {
-    const data = [];
-    for (let lat = -90; lat <= 90; lat += 2) {
-      for (let lng = -180; lng <= 180; lng += 2) {
-        data.push([lng, lat]);
-      }
-    }
-    return data;
-  }, []);
-
   // Setup points data
   const pointsData = useMemo(() => 
     Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => ({
@@ -63,30 +52,66 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     }
   }, []);
 
+  // Auto-rotate
+  useEffect(() => {
+    if (!globeEl.current) return;
+    
+    globeEl.current.controls().enableZoom = false;
+    globeEl.current.controls().autoRotate = true;
+    globeEl.current.controls().autoRotateSpeed = 0.7;
+
+    const controls = globeEl.current.controls();
+    controls.minPolarAngle = Math.PI / 3.5;
+    controls.maxPolarAngle = Math.PI - Math.PI / 3;
+  }, []);
+
   if (!ready || typeof window === 'undefined') {
     return null;
   }
 
   const Globe = require('react-globe.gl').default;
   return (
-    <Globe
-      ref={globeEl}
-      width={800}
-      height={800}
-      globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
-      
-      pointsData={pointsData}
-      pointLat="lat"
-      pointLng="lng"
-      pointColor="color"
-      pointLabel="label"
-      pointRadius="size"
-      
-      backgroundColor="#13111C"
-      atmosphereColor="#1C1539"
-    />
+    <div style={{ 
+      background: 'radial-gradient(circle at center, #13111C 0%, #090818 100%)',
+      padding: '2rem',
+      borderRadius: '8px'
+    }}>
+      <Globe
+        ref={globeEl}
+        width={800}
+        height={800}
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        
+        pointsData={pointsData}
+        pointAltitude={0.01}
+        pointLat="lat"
+        pointLng="lng"
+        pointColor="color"
+        pointLabel="label"
+        pointRadius="size"
+        
+        backgroundColor="rgba(0,0,0,0)"
+        atmosphereColor="#1C1539"
+        atmosphereAltitude={0.25}
+        
+        pointOfView={{
+          lat: 30,
+          lng: 0,
+          altitude: 2.5
+        }}
+
+        hexPolygonsData={regions}
+        hexPolygonResolution={3}
+        hexPolygonMargin={0.7}
+        hexPolygonUseDots={true}
+        hexPolygonColor={() => "#4A148C"}
+        hexPolygonAltitude={0.01}
+      />
+    </div>
   );
 }
+
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
