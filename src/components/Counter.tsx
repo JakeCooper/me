@@ -231,13 +231,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         }}
         
         arcsData={arcData}
-        arcColor={d => d.color}
-        arcStroke={d => d.stroke}
-        arcDashGap={d => d.gap}
-        arcDashLength={d => d.dash}
-        arcAltitudeAutoScale={d => d.scale}
-        arcDashAnimateTime={d => d.time}
-        
+        arcColor={'color'}
+        arcStroke={'stroke'}
+        arcDashGap={'gap'}
+        arcDashLength={'dash'}
+        arcAltitudeAutoScale={'scale'}
+        arcDashAnimateTime={'time'}
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
         atmosphereAltitude={0.1}
