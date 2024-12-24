@@ -209,7 +209,7 @@ const server = Bun.serve({
       const regions = Array.from(latestCounts.values());
       ws.send(JSON.stringify({ type: "state", regions }));
     
-      // Broadcast "connected" event to all clients
+      // Broadcast "connected" event to all clients concurrently
       const update = {
         type: "connected",
         region: REGION,
@@ -217,7 +217,7 @@ const server = Bun.serve({
         lastUpdate: new Date().toISOString(),
       };
       const wsMessage = JSON.stringify(update);
-      clients.forEach(client => client.send(wsMessage));
+      Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
     },
     close(ws) {
       clients.delete(ws);
@@ -257,12 +257,12 @@ const server = Bun.serve({
             lastUpdate: update.lastUpdate
           });
           const wsMessage = JSON.stringify(update);
-          clients.forEach(client => client.send(wsMessage));
+          await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
     
           // Broadcast to all regions via Redis
-          for (const [_, client] of redisClients.entries()) {
-            await client.publish('counter-updates', JSON.stringify(update));
-          }
+          await Promise.all(Array.from(redisClients.entries()).map(([_, client]) =>
+            client.publish('counter-updates', JSON.stringify(update))
+          ));
         }
         
         if (data.type === "increment" && data.location) {
@@ -292,12 +292,12 @@ const server = Bun.serve({
           
           // Send update to all connected WebSocket clients
           const wsMessage = JSON.stringify(update);
-          clients.forEach(client => client.send(wsMessage));
+          await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
           
           // Broadcast to all regions via Redis
-          for (const [_, client] of redisClients.entries()) {
-            await client.publish('counter-updates', JSON.stringify(update));
-          }
+          await Promise.all(Array.from(redisClients.entries()).map(([_, client]) =>
+            client.publish('counter-updates', JSON.stringify(update))
+          ));
         }
       } catch (error) {
         console.error("Error processing message:", error);
