@@ -247,16 +247,14 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
-  const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(
-    (window as any).__INITIAL_DATA__.userLocation || null
-  );
+  const [localUserLocation, setLocalUserLocation] = React.useState<{ lat: number; lng: number } | null>(userLocation);
 
   // Get user location when component mounts
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          setLocalUserLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
@@ -264,7 +262,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         (error) => {
           console.error("Error getting location:", error);
           // Fallback to datacenter location
-          setUserLocation({
+          setLocalUserLocation({
             lat: DATACENTER_LOCATIONS[currentRegion][0],
             lng: DATACENTER_LOCATIONS[currentRegion][1]
           });
@@ -288,7 +286,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         // Send "connected" message to server
         websocket.send(JSON.stringify({
           type: "connected",
-          location: userLocation,
+          location: localUserLocation,
         }));
       };
 
@@ -356,14 +354,14 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       clearTimeout(reconnectTimer);
       ws.close();
     };
-  }, [userLocation]);
+  }, [localUserLocation]);
 
   const incrementCounter = () => {
-    if (ws?.readyState === WebSocket.OPEN && userLocation) {
+    if (ws?.readyState === WebSocket.OPEN && localUserLocation) {
       // Send increment message to WebSocket
       ws.send(JSON.stringify({ 
         type: "increment",
-        location: userLocation
+        location: localUserLocation
       }));
   
       // Optimistically update the counter in local state
@@ -395,7 +393,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         </div>
         <button
           onClick={incrementCounter}
-          disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
+          disabled={!ws || ws.readyState !== WebSocket.OPEN || !localUserLocation}
           style={{
             padding: '8px 16px',
             fontSize: '16px',
@@ -417,8 +415,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         <GlobeViz 
           regions={localRegions} 
           currentRegion={currentRegion} 
-          connections={connections} 
-          userLocation={userLocation}
+          connections={connections}
+          userLocation={localUserLocation}
         />
       </div>
     </div>

@@ -87,7 +87,7 @@ async function initializeSubscribers() {
           
           // Broadcast to all WebSocket clients
           const wsMessage = JSON.stringify(update);
-          clients.forEach(client => client.send(wsMessage));
+          await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
         } catch (error) {
           console.error(`Error processing Redis message from ${region}:`, error);
         }
@@ -148,7 +148,7 @@ const server = Bun.serve({
   port: 3000,
   async fetch(req) {
     const url = new URL(req.url);
-  
+
     // Handle WebSocket upgrade
     if (req.headers.get("Upgrade") === "websocket") {
       const upgraded = server.upgrade(req);
@@ -157,12 +157,12 @@ const server = Bun.serve({
       }
       return undefined;
     }
-  
+
     // Ignore favicon.ico requests
     if (url.pathname === '/favicon.ico') {
       return new Response(null, { status: 404 });
     }
-  
+
     // Serve client bundle
     if (url.pathname === '/client.js') {
       return Bun.build({
@@ -175,10 +175,10 @@ const server = Bun.serve({
         });
       });
     }
-  
+
     // Get client's IP address
     const clientIp = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
-  
+
     // Make a request to the IP geolocation service
     let userLocation = null;
     try {
@@ -189,10 +189,10 @@ const server = Bun.serve({
     } catch (error) {
       console.error('Error fetching user location:', error);
     }
-  
+
     // Server-side render
     const regions = await getAllCounts();
-    const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
+    const content = renderToString(<Counter regions={regions} currentRegion={REGION} userLocation={userLocation} />);
     
     return new Response(
       `<!DOCTYPE html>
@@ -223,7 +223,7 @@ const server = Bun.serve({
       // Send current state from cache immediately
       const regions = Array.from(latestCounts.values());
       ws.send(JSON.stringify({ type: "state", regions }));
-    
+
       // Broadcast "connected" event to all clients concurrently
       const update = {
         type: "connected",
@@ -240,10 +240,11 @@ const server = Bun.serve({
     async message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
+
         if (data.type === "connected" && data.location) {
           // Increment counter
           const newValue = await incrementCounter();
-    
+
           // Create update message with location data
           const update = {
             type: "update",
@@ -264,8 +265,8 @@ const server = Bun.serve({
               }
             }
           };
-    
-          // Update local cache and send update to all connected clients
+
+          // Update local cache and send update to all connected clients concurrently
           latestCounts.set(REGION, {
             region: REGION,
             count: newValue,
@@ -273,13 +274,13 @@ const server = Bun.serve({
           });
           const wsMessage = JSON.stringify(update);
           await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
-    
-          // Broadcast to all regions via Redis
+
+          // Broadcast to all regions via Redis concurrently
           await Promise.all(Array.from(redisClients.entries()).map(([_, client]) =>
             client.publish('counter-updates', JSON.stringify(update))
           ));
         }
-        
+
         if (data.type === "increment" && data.location) {
           // Increment counter
           const newValue = await incrementCounter();
@@ -305,11 +306,16 @@ const server = Bun.serve({
             }
           };
           
-          // Send update to all connected WebSocket clients
+          // Update local cache and send update to all connected clients concurrently
+          latestCounts.set(REGION, {
+            region: REGION,
+            count: newValue,
+            lastUpdate: update.lastUpdate
+          });
           const wsMessage = JSON.stringify(update);
           await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
-          
-          // Broadcast to all regions via Redis
+
+          // Broadcast to all regions via Redis concurrently
           await Promise.all(Array.from(redisClients.entries()).map(([_, client]) =>
             client.publish('counter-updates', JSON.stringify(update))
           ));
