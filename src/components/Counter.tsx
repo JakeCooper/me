@@ -86,7 +86,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   );
 
   const styles: GlobeStyles = useMemo(
-    () => globeStyles["light"],
+    () => globeStyles["dark"],
     [],
   ); // TODO: Support darkmode switch
 
@@ -149,6 +149,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         hexPolygonsData={countries.features}
         hexPolygonColor={() => styles.hexPolygonColor} // Full opacity
         hexPolygonResolution={3}
+        hexPolygonUseDots={true}
         hexPolygonMargin={0.7}
       />
     </div>
