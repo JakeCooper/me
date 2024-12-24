@@ -1,15 +1,27 @@
-import React, { useEffect, useRef, useMemo, useState } from "react";
-import { Color, MeshPhongMaterial } from "three";
-import * as THREE from 'three';
-import * as topojson from 'topojson-client';
-import world from './world.json';
+import React, { useEffect, useRef, useMemo } from "react";
 import type { GlobeProps } from "react-globe.gl";
+import { Color } from "three";
+import * as THREE from 'three';
 import { countries } from "./countries";
 
 interface RegionData {
   region: string;
   count: number;
   lastUpdate: string;
+}
+
+interface Connection {
+  from: {
+    lat: number;
+    lng: number;
+    city: string;
+    country: string;
+  };
+  to: {
+    region: string;
+    lat: number;
+    lng: number;
+  };
 }
 
 interface CounterProps {
@@ -70,32 +82,7 @@ if (typeof window !== 'undefined') {
   ReactGlobe = require('react-globe.gl').default;
 }
 
-const useGeolocation = () => {
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser");
-      return;
-    }
-
-    const success = (position: GeolocationPosition) => {
-      const { latitude, longitude } = position.coords;
-      setLocation({ lat: latitude, lng: longitude });
-    };
-
-    const fail = (err: GeolocationPositionError) => {
-      setError(`Unable to retrieve your location (${err.message})`);
-    };
-
-    navigator.geolocation.getCurrentPosition(success, fail);
-  }, []);
-
-  return { location, error };
-};
-
-const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
+const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & { connections: Connection[] }) => {
   const globeEl = useRef<any>();
 
   // Setup points data with labels
@@ -117,6 +104,18 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   const styles: GlobeStyles = useMemo(
     () => globeStyles["dark"],
     [],
+  );
+
+  // Setup arcs data
+  const arcData = useMemo(() => 
+    connections.map(conn => ({
+      startLat: conn.from.lat,
+      startLng: conn.from.lng,
+      endLat: conn.to.lat,
+      endLng: conn.to.lng,
+      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3"
+    })),
+    [connections, currentRegion]
   );
 
   // Auto-rotate
@@ -143,28 +142,23 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         
         customLayerData={pointsData}
         customThreeObject={d => {
-          // Create a group to hold both the point and label
           const group = new THREE.Group();
 
-          // Create the point
           const point = new THREE.Mesh(
             new THREE.SphereGeometry(d.size, 16, 16),
             new THREE.MeshBasicMaterial({ color: d.color })
           );
           group.add(point);
 
-          // Create label with white text on dark background
           const canvas = document.createElement('canvas');
           canvas.width = 128;
           canvas.height = 64;
           const ctx = canvas.getContext('2d')!;
           
-          // Draw semi-transparent background
           ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
           ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
           ctx.fill();
           
-          // Draw text
           ctx.fillStyle = 'white';
           ctx.font = 'bold 32px Arial';
           ctx.textAlign = 'center';
@@ -178,7 +172,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
           });
           const label = new THREE.Sprite(spriteMaterial);
           label.scale.set(10, 5, 1);
-          label.position.y = 10; // Adjust this value to control height above point
+          label.position.y = 10;
           group.add(label);
 
           return group;
@@ -189,7 +183,6 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
           const pos = globeEl.current.getCoords(d.lat, d.lng, 0.01);
           obj.position.set(pos.x, pos.y, pos.z);
           
-          // Update label text
           const label = obj.children[1];
           if (label) {
             const spriteMaterial = label.material as THREE.SpriteMaterial;
@@ -198,12 +191,10 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Redraw background
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
             ctx.fill();
             
-            // Redraw text
             ctx.fillStyle = 'white';
             ctx.font = 'bold 32px Arial';
             ctx.textAlign = 'center';
@@ -213,15 +204,21 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
             spriteMaterial.map!.needsUpdate = true;
           }
 
-          // Make label face the camera
           obj.quaternion.copy(globeEl.current.camera().quaternion);
         }}
+        
+        arcsData={arcData}
+        arcColor="color"
+        arcDashLength={0.5}
+        arcDashGap={0.1}
+        arcDashAnimateTime={2000}
+        arcStroke={1}
+        arcAltitudeAutoScale={0.5}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
         atmosphereAltitude={styles.atmosphereAltitude}
 
-        hexPolygonAltitude={0.01}
         hexPolygonsData={countries.features}
         hexPolygonColor={() => styles.hexPolygonColor}
         hexPolygonResolution={3}
@@ -234,6 +231,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
+  const [connections, setConnections] = React.useState<Connection[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
 
@@ -254,6 +252,19 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         const data = JSON.parse(event.data);
         if (data.type === "state" && Array.isArray(data.regions)) {
           setLocalRegions(data.regions);
+        }
+        if (data.type === "update" && data.connection) {
+          // Add new connection with fade-out
+          setConnections(prev => [...prev, data.connection]);
+          // Remove connection after animation
+          setTimeout(() => {
+            setConnections(prev => 
+              prev.filter(c => 
+                c.from.lat !== data.connection.from.lat || 
+                c.from.lng !== data.connection.from.lng
+              )
+            );
+          }, 2000);
         }
       };
 
@@ -324,7 +335,11 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <GlobeViz regions={localRegions} currentRegion={currentRegion} />
+        <GlobeViz 
+          regions={localRegions} 
+          currentRegion={currentRegion} 
+          connections={connections} 
+        />
       </div>
     </div>
   );
