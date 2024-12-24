@@ -1,0 +1,11 @@
+[build]
+minify = true
+splitting = true
+sourcemap = "external"
+target = "browser"
+entry = ["./src/client.tsx"]
+outdir = "./public"
+
+[build.override]
+package = "three"
+bundleBehavior = "external"

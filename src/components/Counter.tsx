@@ -462,7 +462,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           fontSize: '1rem',
           lineHeight: '1.5'
         }}>
-          My name is Jake Cooper. I'm a technologist originally from Canada.
+          My name is JustJake. I'm a technologist originally from Canada.
         </p>
         
         <p style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
