@@ -65,7 +65,15 @@ const globeStyles: Record<"light" | "dark", GlobeStyles> = {
   },
 };
 
-let ReactGlobe: React.FC<any> = () => null;
+let ReactGlobe: React.FC<any> = () => (
+  <div style={{ 
+    width: "800px", 
+    height: "800px",
+    background: "#13111C",
+    transition: "opacity 0.3s ease-in-out",
+    opacity: 0 
+  }} />
+);
 
 const MAP_CENTER = { lat: 30.773972, lng: -100.561668, altitude: 1.68 };
 
@@ -78,11 +86,20 @@ const DATACENTER_LOCATIONS = {
 };
 
 if (typeof window !== 'undefined') {
-  ReactGlobe = require('react-globe.gl').default;
+  // Pre-import the module to reduce flash
+  const globe = require('react-globe.gl').default;
+  ReactGlobe = globe;
 }
 
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
   const globeEl = useRef<any>();
+  const [isLoaded, setIsLoaded] = React.useState(false);
+
+  useEffect(() => {
+    if (globeEl.current) {
+      setIsLoaded(true);
+    }
+  }, [globeEl.current]);
 
   // Setup points data with labels
   const datacenterPoints = useMemo(() => 
@@ -142,7 +159,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
   return (
     <div style={{ 
-      background: 'radial-gradient(circle at center, #13111C 0%, #090818 100%)',
+      background: '#13111C',
+      transition: 'opacity 0.3s ease-in-out',
+      opacity: isLoaded ? 1 : 0
     }}>
       <ReactGlobe
         ref={globeEl}

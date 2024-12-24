@@ -185,6 +185,21 @@ const server = Bun.serve({
         <html>
           <head>
             <title>Global Counter Network - ${REGION}</title>
+            <style>
+              html, 
+              body, 
+              #root, 
+              #__next {
+                margin: 0;
+                padding: 0;
+                background: #13111C !important;
+                min-height: 100vh;
+                color: white;
+              }
+              * {
+                box-sizing: border-box;
+              }
+            </style>
             <script src="/client.js" type="module" defer></script>
           </head>
           <body>
