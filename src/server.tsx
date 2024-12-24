@@ -148,7 +148,7 @@ const server = Bun.serve({
   port: 3000,
   async fetch(req) {
     const url = new URL(req.url);
-
+  
     // Handle WebSocket upgrade
     if (req.headers.get("Upgrade") === "websocket") {
       const upgraded = server.upgrade(req);
@@ -157,17 +157,12 @@ const server = Bun.serve({
       }
       return undefined;
     }
-
-    // Increment counter only on the main page request
-    if (url.pathname === '/') {
-      await incrementCounter();
-    }
-
+  
     // Ignore favicon.ico requests
     if (url.pathname === '/favicon.ico') {
       return new Response(null, { status: 404 });
     }
-
+  
     // Serve client bundle
     if (url.pathname === '/client.js') {
       return Bun.build({
@@ -180,7 +175,7 @@ const server = Bun.serve({
         });
       });
     }
-
+  
     // Server-side render
     const regions = await getAllCounts();
     const content = renderToString(<Counter regions={regions} currentRegion={REGION} />);
