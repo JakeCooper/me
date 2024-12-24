@@ -107,7 +107,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
     Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => ({
       lat,
       lng,
-      size: region === currentRegion ? 1.0 : 0.5,
+      size: region === currentRegion ? 1.5 : 1,
       color: region === currentRegion ? "#E835A0" : "#9241D3",
       label: `${region}: ${regions.find(r => r.region === region)?.count ?? 0}`
     })),
@@ -165,7 +165,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         pointLabel="label"
         pointRadius="size"
 
-        globeMaterial={globeMaterial}
+        // globeMaterial={globeMaterial}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
