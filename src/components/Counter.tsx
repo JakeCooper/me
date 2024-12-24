@@ -123,7 +123,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         lat,
         lng,
         size: region === currentRegion ? 0.5 : 1,
-        color: region === currentRegion ? "#FFFFFF" : "#9241D3",
+        color: region === currentRegion ? "#00FF00" : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -189,12 +189,21 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         customLayerData={[...datacenterPoints, ...(userPoint ? [userPoint] : [])]}
         customThreeObject={d => {
+          console.log('Creating point with data:', d); // Debug log
           const group = new THREE.Group();
-        
-          const point = new THREE.Mesh(
-            new THREE.SphereGeometry(d.size, 16, 16),
-            new THREE.MeshBasicMaterial({ color: d.color })
-          );
+          
+          // Create base mesh
+          const geometry = new THREE.SphereGeometry(1, 16, 16); // Base size of 1
+          const material = new THREE.MeshBasicMaterial();
+          const point = new THREE.Mesh(geometry, material);
+          
+          // Scale the mesh instead of changing geometry
+          point.scale.setScalar(d.type === 'datacenter' ? 
+            (d.region === currentRegion ? 1.5 : 1) : 1);
+          
+          // Update material color
+          material.color.set(d.color);
+          
           group.add(point);
         
           if (d.type === 'datacenter') {
@@ -257,12 +266,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         }}
         
         arcsData={arcData}
-        arcColor={d => d.color}
-        arcStroke='stroke'
-        arcDashGap='gap'
-        arcDashLength='dash'
-        arcAltitudeAutoScale='scale'
-        arcDashAnimateTime='time'
+        arcColor={'color'}
+        arcStroke={'stroke'}
+        arcDashGap={'gap'}
+        arcDashLength={'dash'}
+        arcAltitudeAutoScale={'scale'}
+        arcDashAnimateTime={'time'}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
