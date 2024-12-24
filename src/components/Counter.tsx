@@ -261,7 +261,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         // Arc configuration
         arcsData={arcData}
-        arcColor='color'
+        arcColor={() => "#FFFFFF"}
         arcStroke='stroke'
         arcDashGap='gap'
         arcDashLength='dash'
