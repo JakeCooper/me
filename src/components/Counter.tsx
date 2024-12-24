@@ -141,32 +141,10 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      stroke: 1,
-      gap: 0.02,
-      dash: 0.02,
-      scale: 0.3,
-      time: 5000,
+      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3"
     })),
     [connections, currentRegion]
   );
-
-  const getArcHeight = (startLat: number, startLng: number, endLat: number, endLng: number) => {
-    // Convert to radians
-    const startLatRad = startLat * Math.PI / 180;
-    const startLngRad = startLng * Math.PI / 180;
-    const endLatRad = endLat * Math.PI / 180;
-    const endLngRad = endLng * Math.PI / 180;
-
-    // Calculate great circle distance
-    const distance = Math.acos(
-      Math.sin(startLatRad) * Math.sin(endLatRad) +
-      Math.cos(startLatRad) * Math.cos(endLatRad) * Math.cos(endLngRad - startLngRad)
-    );
-
-    // Return height that scales with distance but has a minimum
-    return Math.max(0.2, distance * 0.5);
-  };  
 
   // Auto-rotate
   useEffect(() => {
@@ -259,14 +237,13 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
           obj.quaternion.copy(globeEl.current.camera().quaternion);
         }}
         
-        // Arc configuration
         arcsData={arcData}
-        arcColor='color'
-        arcStroke='stroke'
-        arcDashGap='gap'
-        arcDashLength='dash'
-        arcAltitudeAutoScale='scale'
-        arcDashAnimateTime='time'
+        arcColor="color"
+        arcDashLength={0.5}
+        arcDashGap={0.1}
+        arcDashAnimateTime={5000}
+        arcStroke={1}
+        arcAltitudeAutoScale={0.8}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
