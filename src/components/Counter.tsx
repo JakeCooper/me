@@ -3,6 +3,7 @@ import { Color, MeshPhongMaterial } from "three";
 import * as THREE from 'three';
 import * as topojson from 'topojson-client';
 import world from './world.json';
+import type { GlobeProps } from "react-globe.gl";
 
 interface RegionData {
   region: string;
@@ -14,6 +15,8 @@ interface CounterProps {
   regions: RegionData[];
   currentRegion: string;
 }
+
+let ReactGlobe: React.FC<GlobeProps & { ref: any }> = () => null;
 
 const MAP_CENTER = { lat: 30.773972, lng: -100.561668, altitude: 1.68 };
 
@@ -80,7 +83,7 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       padding: '2rem',
       borderRadius: '8px'
     }}>
-      <Globe
+      <ReactGlobe
         ref={globeEl}
         width={800}
         height={800}
@@ -94,7 +97,6 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         pointColor="color"
         pointLabel="label"
         pointRadius="size"
-        
         
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
