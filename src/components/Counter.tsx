@@ -141,7 +141,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3"
+      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+      altitude: 0.4  // Fixed altitude for consistent arc height
     })),
     [connections, currentRegion]
   );
@@ -237,13 +238,17 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
           obj.quaternion.copy(globeEl.current.camera().quaternion);
         }}
         
+        // Updated arc configuration
         arcsData={arcData}
         arcColor="color"
-        arcDashLength={0.5}
-        arcDashGap={0.1}
-        arcDashAnimateTime={2000}
-        arcStroke={1}
-        arcAltitudeAutoScale={0.8}
+        arcDashLength={1}            // Full arc visible
+        arcDashGap={0}              // No gap in the arc
+        arcDashInitialGap={1}       // Start with full gap (invisible)
+        arcDashAnimateTime={1000}   // Animation duration
+        arcStroke={1}               // Arc thickness
+        arcAltitude={(d) => d.altitude} // Use fixed altitude from data
+        arcCurveResolution={64}     // Smoother curves
+        arcCircularResolution={32}  // Smoother circular cross-section
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
