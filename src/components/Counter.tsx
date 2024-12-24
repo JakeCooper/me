@@ -112,7 +112,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3"
+      color: conn.to.region === currentRegion ? "#E835A0" : "#9241D3",
+      arcAltitude: 0.1 + 0.3 * Math.random(), // Higher for longer arcs, lower for shorter ones
     })),
     [connections, currentRegion]
   );
@@ -207,12 +208,14 @@ const GlobeViz = ({ regions, currentRegion, connections = [] }: CounterProps & {
         }}
         
         arcsData={arcData}
-        arcColor="color"
-        arcDashLength={0.5}
-        arcDashGap={0.1}
-        arcDashAnimateTime={2000}
-        arcStroke={1}
-        arcAltitudeAutoScale={1}
+        arcColor="color"                  // Color property for each arc
+        arcDashLength={0.25}              // Shorter visible segment for a cleaner animation
+        arcDashGap={0.75}                 // Longer gap to give the appearance of travel
+        arcDashInitialGap={1}             // Ensures the arc starts from origin
+        arcDashAnimateTime={2000}         // Animation duration in milliseconds
+        arcStroke={1.5}                   // Slightly thicker stroke for visibility
+        arcAltitudeAutoScale={0.5}        // Makes arcs proportional to distance
+        // arcAltitude={(d) => 0.2}          // Optional: Fixed altitude for uniform appearance
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
