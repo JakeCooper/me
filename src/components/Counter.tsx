@@ -140,11 +140,9 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         atmosphereColor={styles.atmosphereColor}
         atmosphereAltitude={styles.atmosphereAltitude}
 
-        // hexPolygonColor={styles.hexPolygonColor}
-        // hexPolygonsData={countries.features}
-        // hexPolygonAltitude={0.01}
+        hexPolygonAltitude={0.01}
         hexPolygonsData={countries.features}
-        hexPolygonColor={styles.hexPolygonColor} // Full opacity
+        hexPolygonColor={() => styles.hexPolygonColor} // Full opacity
         hexPolygonResolution={3}
         hexPolygonUseDots={true}
         hexPolygonMargin={0.7}
