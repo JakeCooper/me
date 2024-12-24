@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import * as topojson from 'topojson-client';
 import world from './world.json';
 
-
 interface RegionData {
   region: string;
   count: number;
@@ -31,11 +30,24 @@ if (typeof window !== "undefined") {
 
 function GlobeViz({ regions, currentRegion }: CounterProps) {
   const globeEl = useRef<any>();
-  const size = Math.min(window.innerWidth - 40, 800);
+  const [size, setSize] = React.useState(800);
+
+  // Update size on mount and handle resize
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSize(Math.min(window.innerWidth - 40, 800));
+
+      function handleResize() {
+        setSize(Math.min(window.innerWidth - 40, 800));
+      }
+
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Convert TopoJSON to GeoJSON
   const worldData = useMemo(() => {
-    const world = fetch('/world.json').then(r => r.json());
     const countries = topojson.feature(world, world.objects.countries);
     return countries.features;
   }, []);
@@ -72,6 +84,11 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     globeEl.current.controls().autoRotateSpeed = 0.5;
     globeEl.current.pointOfView({ lat: 30, lng: 0, altitude: 2.5 });
   }, []);
+
+  // Only render on client side
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
   return (
     <Globe
