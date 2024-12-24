@@ -46,12 +46,6 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     }
   }, []);
 
-  // Convert TopoJSON to GeoJSON
-  const worldData = useMemo(() => {
-    const countries = topojson.feature(world, world.objects.countries);
-    return countries.features;
-  }, []);
-
   const points = useMemo(() => 
     Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
       const regionData = regions.find(r => r.region === region);
@@ -90,6 +84,19 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     return null;
   }
 
+  // Generate points for the dotted effect
+  const hexPoints = [];
+  for (let lat = -90; lat <= 90; lat += 3) {
+    for (let lng = -180; lng <= 180; lng += 3) {
+      hexPoints.push({
+        lat,
+        lng,
+        size: 0.2,
+        color: "rgba(146,65,211, 0.1)"
+      });
+    }
+  }
+
   return (
     <Globe
       ref={globeEl}
@@ -98,11 +105,11 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       globeMaterial={globeMaterial}
       animateIn={false}
       
-      // Country borders
-      hexPolygonsData={worldData}
+      // Dotted globe effect
+      hexPolygonsData={hexPoints}
       hexPolygonResolution={3}
       hexPolygonMargin={0.7}
-      hexPolygonColor={() => "rgba(146,65,211, 0.1)"}
+      hexPolygonColor={d => d.color}
       
       // Points for datacenters
       customLayerData={points}

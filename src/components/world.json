@@ -1,20 +1,23 @@
 {
   "type": "Topology",
+  "arcs": [
+    [[0,0], [1,0], [1,1], [0,1], [0,0]]
+  ],
+  "transform": {
+    "scale": [360, 180],
+    "translate": [-180, -90]
+  },
   "objects": {
     "countries": {
       "type": "GeometryCollection",
       "geometries": [
         {
-          "type": "MultiPolygon",
-          "coordinates": [[[[50,30],[60,30],[60,20],[50,20],[50,30]]]],
-          "properties": {"name": "Sample Country"}
+          "type": "Polygon",
+          "arcs": [[0]],
+          "id": "world",
+          "properties": { "name": "World" }
         }
       ]
     }
-  },
-  "transform": {
-    "scale": [0.036003600360036005,0.017361589674592462],
-    "translate": [-180,-90]
-  },
-  "arcs": []
+  }
 }
