@@ -376,71 +376,66 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#13111C]">
-      <div className="container mx-auto flex flex-col lg:flex-row min-h-screen">
-        {/* Left Column - Content */}
-        <div className="lg:w-1/2 p-8 lg:p-16 flex flex-col justify-center text-white">
-          <div className="max-w-xl space-y-6">
-            <h1 className="text-4xl font-bold">Hello</h1>
-            
-            <p className="text-xl">
-              My name is Jake Cooper. I'm a technologist originally from Canada.
-            </p>
-            
-            <p className="text-xl">
-              I currently live in San Francisco, where I run{" "}
-              <a 
-                href="https://railway.com"
-                className="text-[#E835A0] hover:underline"
-              >
-                Railway.com
-              </a>
-              , an infrastructure startup. We're remote, employing 25+ around the world, 
-              from California to Japan and everywhere in between.
-            </p>
-            
-            <p className="text-xl">
-              You can deploy anything on Railway, including this website.
-            </p>
-            
-            <p className="font-mono text-lg opacity-75">
-              It's served via IP address 66.33.22.11 (φ^-1), by ASN 400940, and runs 
-              in {regions.length} different locations, across 3 different countries, 
-              on servers we own.
-            </p>
-            
-            <p className="text-xl italic">
-              All requests to this website can be seen in real-time to your right.
-            </p>
+    <div className="grid grid-cols-2 min-h-screen bg-[#13111C]">
+      {/* Left Column - Content */}
+      <div className="p-8">
+        <h1 className="text-4xl font-bold mb-6">Hello</h1>
+        
+        <p className="mb-4">
+          My name is Jake Cooper. I'm a technologist originally from Canada.
+        </p>
+        
+        <p className="mb-4">
+          I currently live in San Francisco, where I run{" "}
+          <a 
+            href="https://railway.com"
+            className="text-[#E835A0] hover:underline"
+          >
+            Railway.com
+          </a>
+          , an infrastructure startup. We're remote, employing 25+ around the world, 
+          from California to Japan and everywhere in between.
+        </p>
+        
+        <p className="mb-4">
+          You can deploy anything on Railway, including this website.
+        </p>
+        
+        <p className="font-mono mb-4">
+          It's served via IP address 66.33.22.11 (φ^-1), by ASN 400940, and runs 
+          in {regions.length} different locations, across 3 different countries, 
+          on servers we own.
+        </p>
+        
+        <p className="italic mb-8">
+          All requests to this website can be seen in real-time to your right.
+        </p>
 
-            <div className="flex items-center gap-4 pt-4">
-              <div>
-                <strong>Your Region ({currentRegion}):</strong>{" "}
-                {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
-              </div>
-              <button
-                onClick={incrementCounter}
-                disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
-                className="px-4 py-2 bg-[#E835A0] text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Increment Counter
-              </button>
-              <div className="text-sm opacity-50">
-                Status: {status}
-              </div>
-            </div>
+        <div className="space-y-2">
+          <div>
+            Your Region ({currentRegion}): {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
+          </div>
+          <button
+            onClick={incrementCounter}
+            disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
+            className="bg-[#E835A0] px-4 py-2 rounded"
+          >
+            Increment Counter
+          </button>
+          <div className="text-sm opacity-50">
+            Status: {status}
           </div>
         </div>
+      </div>
 
-        {/* Right Column - Globe */}
-        <div className="lg:w-1/2 flex items-center justify-center p-8">
-          <GlobeViz 
-            regions={localRegions} 
-            currentRegion={currentRegion} 
-            connections={connections} 
-            userLocation={userLocation}
-          />
-        </div>
+      {/* Right Column - Globe */}
+      <div>
+        <GlobeViz 
+          regions={localRegions} 
+          currentRegion={currentRegion} 
+          connections={connections} 
+          userLocation={userLocation}
+        />
       </div>
     </div>
   );
