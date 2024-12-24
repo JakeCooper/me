@@ -10,16 +10,16 @@ interface RegionState {
   lastUpdate: string;
 }
 
-interface IPLocation {
-  latitude: number;
-  longitude: number;
-  ip: string;
-  city: string;
-  country: string;
-}
-
 // Region configuration
 const REGION = process.env.RAILWAY_REPLICA_REGION || "unknown-region";
+
+// Data center coordinates [lat, lng]
+const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
+  'us-west1': [45.5945, -122.1562],    // Oregon
+  'us-east4': [38.7223, -77.0196],     // Virginia
+  'europe-west4': [53.4478, 6.8367],   // Netherlands
+  'asia-southeast1': [1.3521, 103.8198] // Singapore
+};
 
 // Region to Redis URL mapping
 const REDIS_MAPPING = {
@@ -27,13 +27,6 @@ const REDIS_MAPPING = {
   'us-east4': process.env.REDIS_EAST_URL,
   'asia-southeast1': process.env.REDIS_ASIA_URL,
   'europe-west4': process.env.REDIS_EUROPE_URL
-};
-
-const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
-  'us-west1': [45.5945, -122.1562],    // Oregon
-  'us-east4': [38.7223, -77.0196],     // Virginia
-  'europe-west4': [53.4478, 6.8367],   // Netherlands
-  'asia-southeast1': [1.3521, 103.8198] // Singapore
 };
 
 // Create Redis clients for all regions
@@ -45,29 +38,6 @@ const latestCounts = new Map<string, RegionState>();
 
 // Connected WebSocket clients for updates
 const clients = new Set<WebSocket>();
-
-async function getIpLocation(ip: string): Promise<IPLocation> {
-  try {
-    const response = await fetch(`https://ipapi.co/${ip}/json/`);
-    const data = await response.json();
-    return {
-      latitude: data.latitude,
-      longitude: data.longitude,
-      ip: data.ip,
-      city: data.city,
-      country: data.country_name
-    };
-  } catch (error) {
-    console.error('Error getting IP location:', error);
-    return {
-      latitude: 0,
-      longitude: 0,
-      ip: ip,
-      city: 'Unknown',
-      country: 'Unknown'
-    };
-  }
-}
 
 // Setup Redis connections
 Object.entries(REDIS_MAPPING).forEach(([region, url]) => {
@@ -165,50 +135,13 @@ async function getAllCounts(): Promise<RegionState[]> {
 }
 
 // Increment counter and publish update
-async function incrementCounter(ip: string): Promise<number> {
+async function incrementCounter(): Promise<number> {
   const client = redisClients.get(REGION);
   if (!client) throw new Error(`No Redis client for ${REGION}`);
   
-  try {
-    // Get location from IP
-    const location = await getIpLocation(ip);
-    console.log('Got location:', location);
-
-    // Increment counter
-    const key = `counter:${REGION}`;
-    const newValue = await client.incr(key);
-    
-    // Create update message
-    const update = {
-      type: "update",
-      region: REGION,
-      count: newValue,
-      lastUpdate: new Date().toISOString(),
-      connection: {
-        from: {
-          lat: location.latitude,
-          lng: location.longitude,
-          city: location.city,
-          country: location.country
-        },
-        to: {
-          region: REGION,
-          lat: DATACENTER_LOCATIONS[REGION][0],
-          lng: DATACENTER_LOCATIONS[REGION][1]
-        }
-      }
-    };
-    
-    // Broadcast to all regions
-    for (const [_, client] of redisClients.entries()) {
-      await client.publish('counter-updates', JSON.stringify(update));
-    }
-    
-    return newValue;
-  } catch (error) {
-    console.error('Error in incrementCounter:', error);
-    throw error;
-  }
+  const key = `counter:${REGION}`;
+  const newValue = await client.incr(key);
+  return newValue;
 }
 
 const server = Bun.serve({
@@ -227,10 +160,7 @@ const server = Bun.serve({
 
     // Increment counter only on the main page request
     if (url.pathname === '/') {
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                req.headers.get('x-real-ip') || 
-                'unknown';
-      await incrementCounter(ip);
+      await incrementCounter();
     }
 
     // Ignore favicon.ico requests
@@ -290,11 +220,35 @@ const server = Bun.serve({
     async message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
-        if (data.type === "increment") {
-          // For WebSocket connections, use a generic IP lookup
-          // You might want to store the IP when the WebSocket connects initially
-          const ip = "unknown";
-          await incrementCounter(ip);
+        if (data.type === "increment" && data.location) {
+          // Increment counter
+          const newValue = await incrementCounter();
+          
+          // Create update message with location data
+          const update = {
+            type: "update",
+            region: REGION,
+            count: newValue,
+            lastUpdate: new Date().toISOString(),
+            connection: {
+              from: {
+                lat: data.location.lat,
+                lng: data.location.lng,
+                city: "Unknown",
+                country: "Unknown"
+              },
+              to: {
+                region: REGION,
+                lat: DATACENTER_LOCATIONS[REGION][0],
+                lng: DATACENTER_LOCATIONS[REGION][1]
+              }
+            }
+          };
+          
+          // Broadcast to all regions via Redis
+          for (const [_, client] of redisClients.entries()) {
+            await client.publish('counter-updates', JSON.stringify(update));
+          }
         }
       } catch (error) {
         console.error("Error processing message:", error);

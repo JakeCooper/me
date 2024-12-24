@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useMemo } from "react";
-import type { GlobeProps } from "react-globe.gl";
-import { Color } from "three";
+import { Color, MeshPhongMaterial } from "three";
 import * as THREE from 'three';
 import { countries } from "./countries";
 
@@ -66,7 +65,7 @@ const globeStyles: Record<"light" | "dark", GlobeStyles> = {
   },
 };
 
-let ReactGlobe: React.FC<GlobeProps & { ref: any }> = () => null;
+let ReactGlobe: React.FC<any> = () => null;
 
 const MAP_CENTER = { lat: 30.773972, lng: -100.561668, altitude: 1.68 };
 
@@ -234,6 +233,29 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
+  const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+
+  // Get user location when component mounts
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Fallback to datacenter location
+          setUserLocation({
+            lat: DATACENTER_LOCATIONS[currentRegion][0],
+            lng: DATACENTER_LOCATIONS[currentRegion][1]
+          });
+        }
+      );
+    }
+  }, [currentRegion]);
 
   useEffect(() => {
     let reconnectTimer: number;
@@ -293,8 +315,11 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   }, []);
 
   const incrementCounter = () => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "increment" }));
+    if (ws?.readyState === WebSocket.OPEN && userLocation) {
+      ws.send(JSON.stringify({ 
+        type: "increment",
+        location: userLocation
+      }));
     }
   };
 
@@ -316,7 +341,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         </div>
         <button
           onClick={incrementCounter}
-          disabled={!ws || ws.readyState !== WebSocket.OPEN}
+          disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
           style={{
             padding: '8px 16px',
             fontSize: '16px',
