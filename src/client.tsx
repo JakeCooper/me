@@ -2,6 +2,7 @@ import React from "react";
 import { hydrateRoot } from "react-dom/client";
 import { Counter } from "./components/Counter";
 import type { RegionData } from "./types";
+import './styles.css';
 
 declare global {
   interface Window {
