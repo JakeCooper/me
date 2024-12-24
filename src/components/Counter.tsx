@@ -38,7 +38,7 @@ const globeStyles: Record<"light" | "dark", GlobeStyles> = {
     emissiveIntensity: 2,
     atmosphereColor: "#1C1539",
     backgroundColor: "#13111C",
-    hexPolygonColor: "#rgba(146,65,211, 0.5)",
+    hexPolygonColor: "rgba(146,65,211, 0.5)",
     atmosphereAltitude: 0.25,
   },
   light: {
