@@ -101,57 +101,43 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     }
   }, [globeEl.current]);
 
-  // Setup points data with labels
-  const datacenterPoints = useMemo(() => 
-    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
-      const regionData = regions.find(r => r.region === region);
-      return {
-        lat,
-        lng,
-        size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? "#FFFFFF" : "#9241D3",
-        region,
-        count: regionData?.count ?? 0,
-        type: 'datacenter'
-      };
-    }),
-    [regions, currentRegion]
-  );
+  // Setup points data with labels (removed useMemo)
+  const datacenterPoints = Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
+    const regionData = regions.find(r => r.region === region);
+    return {
+      lat,
+      lng,
+      size: region === currentRegion ? 1.5 : 1,
+      color: region === currentRegion ? "#FFFFFF" : "#9241D3",
+      region,
+      count: regionData?.count ?? 0,
+      type: 'datacenter'
+    };
+  });
 
-  const userPoint = useMemo(() =>
-    userLocation ? {
-      lat: userLocation.lat,
-      lng: userLocation.lng,
-      size: 1,
-      color: 'green',
-      type: 'user'
-    } : null,
-    [userLocation]
-  );
+  const userPoint = userLocation ? {
+    lat: userLocation.lat,
+    lng: userLocation.lng,
+    size: 1,
+    color: 'green',
+    type: 'user'
+  } : null;
 
-  const styles: GlobeStyles = useMemo(
-    () => globeStyles["dark"],
-    [],
-  );
+  const styles = globeStyles["dark"];
 
-  console.log(connections, currentRegion);
-
-  // Setup arcs data
-  const arcData = useMemo(() => 
-    connections.map(conn => ({
-      startLat: conn.from.lat,
-      startLng: conn.from.lng,
-      endLat: conn.to.lat,
-      endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      stroke: 1,
-      gap: 0.02,
-      dash: 0.02,
-      scale: 0.3,
-      time: 2000,
-    })),
-    [connections, currentRegion]
-  );
+  // Setup arcs data (removed useMemo)
+  const arcData = connections.map(conn => ({
+    startLat: conn.from.lat,
+    startLng: conn.from.lng,
+    endLat: conn.to.lat,
+    endLng: conn.to.lng,
+    color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+    stroke: 1,
+    gap: 0.02,
+    dash: 0.02,
+    scale: 0.3,
+    time: 2000,
+  }));
 
   // Auto-rotate
   useEffect(() => {
@@ -245,12 +231,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         }}
         
         arcsData={arcData}
-        arcColor="color"
-        arcDashLength={0.5}
-        arcDashGap={0.1}
-        arcDashAnimateTime={5000}
-        arcStroke={1}
-        arcAltitudeAutoScale={0.8}
+        arcColor={d => d.color}
+        arcStroke={d => d.stroke}
+        arcDashGap={d => d.gap}
+        arcDashLength={d => d.dash}
+        arcAltitudeAutoScale={d => d.scale}
+        arcDashAnimateTime={d => d.time}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
@@ -276,7 +262,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     </div>
   );
 }
-
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
