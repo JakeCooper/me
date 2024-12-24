@@ -75,7 +75,7 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
     return null;
   }
 
-  const Globe = require('react-globe.gl').default;
+  const ReactGlobe = require('react-globe.gl').default;
   return (
     <div style={{ 
       background: 'radial-gradient(circle at center, #13111C 0%, #090818 100%)',
