@@ -31,6 +31,7 @@ if (typeof window !== "undefined") {
 function GlobeViz({ regions, currentRegion }: CounterProps) {
   const globeEl = useRef<any>();
   const [size, setSize] = React.useState(800);
+  const rotationTimer = useRef<number>();
 
   // Update size on mount and handle resize
   useEffect(() => {
@@ -73,10 +74,26 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   useEffect(() => {
     if (!globeEl.current) return;
 
-    globeEl.current.controls().autoRotate = true;
-    globeEl.current.controls().enableZoom = false;
-    globeEl.current.controls().autoRotateSpeed = 0.5;
+    // Initial camera position
     globeEl.current.pointOfView({ lat: 30, lng: 0, altitude: 2.5 });
+    
+    // Setup continuous rotation
+    let currentRotation = 0;
+    const animate = () => {
+      if (globeEl.current) {
+        currentRotation += 0.5;
+        globeEl.current.rotation({ lat: 30, lng: currentRotation });
+        rotationTimer.current = requestAnimationFrame(animate);
+      }
+    };
+    
+    animate();
+
+    return () => {
+      if (rotationTimer.current) {
+        cancelAnimationFrame(rotationTimer.current);
+      }
+    };
   }, []);
 
   // Only render on client side
@@ -149,6 +166,9 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
       atmosphereAltitude={0.25}
       atmosphereGlowColor="#1C1539"
       backgroundColor="#13111C"
+
+      // Disable auto-rotate as we're handling it ourselves
+      enablePointerInteraction={false}
     />
   );
 }
