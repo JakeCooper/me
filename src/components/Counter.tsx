@@ -85,29 +85,31 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
   const globeEl = useRef<any>();
 
   // Setup points data with labels
-  const pointsData = useMemo(() => 
-    [
-      ...Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
-        const regionData = regions.find(r => r.region === region);
-        return {
-          lat,
-          lng,
-          size: region === currentRegion ? 1.5 : 1,
-          color: region === currentRegion ? "#E835A0" : "#9241D3",
-          region,
-          count: regionData?.count ?? 0,
-          type: 'datacenter'
-        };
-      }),
-      ...(userLocation ? [{
-        lat: userLocation.lat,
-        lng: userLocation.lng,
-        size: 1,
-        color: 'green',
-        type: 'user'
-      }] : [])
-    ],
-    [regions, currentRegion, userLocation]
+  const datacenterPoints = useMemo(() => 
+    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
+      const regionData = regions.find(r => r.region === region);
+      return {
+        lat,
+        lng,
+        size: region === currentRegion ? 1.5 : 1,
+        color: region === currentRegion ? "#E835A0" : "#9241D3",
+        region,
+        count: regionData?.count ?? 0,
+        type: 'datacenter'
+      };
+    }),
+    [regions, currentRegion]
+  );
+
+  const userPoint = useMemo(() =>
+    userLocation ? {
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      size: 1,
+      color: 'green',
+      type: 'user'
+    } : null,
+    [userLocation]
   );
 
   const styles: GlobeStyles = useMemo(
@@ -149,7 +151,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         width={800}
         height={800}
         
-        customLayerData={pointsData}
+        customLayerData={[...datacenterPoints, ...(userPoint ? [userPoint] : [])]}
         customThreeObject={d => {
           const group = new THREE.Group();
         
