@@ -15,6 +15,12 @@ interface CounterProps {
   currentRegion: string;
 }
 
+const MAP_CENTER = {
+  lat: 30,
+  lng: 0,
+  altitude: 2.5
+};
+
 // Data center coordinates [lat, lng]
 const DATACENTER_LOCATIONS = {
   'us-west1': [45.5945, -122.1562],    // Oregon
@@ -55,6 +61,8 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
   // Auto-rotate
   useEffect(() => {
     if (!globeEl.current) return;
+
+    globeEl.current.pointOfView(MAP_CENTER, 0);
     
     globeEl.current.controls().enableZoom = false;
     globeEl.current.controls().autoRotate = true;
@@ -95,12 +103,6 @@ function GlobeViz({ regions, currentRegion }: CounterProps) {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#1C1539"
         atmosphereAltitude={0.25}
-        
-        pointOfView={{
-          lat: 30,
-          lng: 0,
-          altitude: 2.5
-        }}
 
         hexPolygonsData={regions}
         hexPolygonResolution={3}
