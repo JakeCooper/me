@@ -98,31 +98,31 @@ const useGeolocation = () => {
 const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
   const globeEl = useRef<any>();
 
-  const { location: userLocation, error } = useGeolocation();
-
-  console.log(userLocation, error);
-
-  // Setup points data
+  // Setup points data with labels
   const pointsData = useMemo(() => 
-    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => ({
-      lat,
-      lng,
-      size: region === currentRegion ? 1.25 : 0.75,
-      color: region === currentRegion ? "#E835A0" : "#9241D3",
-      label: `${region}: ${regions.find(r => r.region === region)?.count ?? 0}`
-    })),
+    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
+      const regionData = regions.find(r => r.region === region);
+      return {
+        lat,
+        lng,
+        size: region === currentRegion ? 1.5 : 1,
+        color: region === currentRegion ? "#E835A0" : "#9241D3",
+        region,
+        count: regionData?.count ?? 0,
+        altitude: 0.1 // Slightly above surface for better label visibility
+      };
+    }),
     [regions, currentRegion]
   );
 
   const styles: GlobeStyles = useMemo(
     () => globeStyles["dark"],
     [],
-  ); // TODO: Support darkmode switch
+  );
 
   const globeMaterial = useMemo(() => {
     const globeMaterial = new MeshPhongMaterial();
     globeMaterial.color = new Color("#13111C");
-
     globeMaterial.transparent = true;
     globeMaterial.flatShading = true;
     globeMaterial.opacity = styles.opacity;
@@ -130,18 +130,17 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
     globeMaterial.emissive = styles.emissive;
     globeMaterial.emissiveIntensity = styles.emissiveIntensity;
     return globeMaterial;
-  }, [])
+  }, []);
 
   // Auto-rotate
   useEffect(() => {
     const globe = globeEl.current;
     if (globe == null) return;
 
-    globeEl.current.pointOfView(MAP_CENTER, 0);
-    
-    globeEl.current.controls().autoRotate = true;
-    globeEl.current.controls().enableZoom = false;
-    globeEl.current.controls().autoRotateSpeed = -0.5;
+    globe.pointOfView(MAP_CENTER, 0);
+    globe.controls().autoRotate = true;
+    globe.controls().enableZoom = false;
+    globe.controls().autoRotateSpeed = -0.5;
   }, []);
 
   return (
@@ -154,18 +153,66 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
         ref={globeEl}
         width={800}
         height={800}
-        // globeImageUrl="//unpkg.com/three-globe/example/img/earth-water.png"
-        // bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         
-        pointsData={pointsData}
-        pointAltitude={0.01}
-        pointLat="lat"
-        pointLng="lng"
-        pointColor="color"
-        pointLabel="label"
-        pointRadius="size"
+        globeMaterial={globeMaterial}
+        
+        // Points with custom rendering
+        customLayerData={pointsData}
+        customThreeObject={d => {
+          const group = new THREE.Group();
 
-        // globeMaterial={globeMaterial}
+          // Create the point
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(d.size * 2, 16, 16),
+            new THREE.MeshBasicMaterial({ color: d.color })
+          );
+          group.add(sphere);
+
+          // Create the label
+          const canvas = document.createElement('canvas');
+          canvas.width = 128;
+          canvas.height = 64;
+          const ctx = canvas.getContext('2d')!;
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 32px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
+
+          const texture = new THREE.CanvasTexture(canvas);
+          const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true,
+            opacity: 0.8
+          });
+          const sprite = new THREE.Sprite(spriteMaterial);
+          sprite.scale.set(8, 4, 1);
+          sprite.position.y = 5; // Position above the point
+          group.add(sprite);
+
+          return group;
+        }}
+        customThreeObjectUpdate={(obj, d) => {
+          if (!obj) return;
+          const globe = globeEl.current;
+          if (!globe) return;
+
+          // Position the group
+          const pos = globe.getCoords(d.lat, d.lng, d.altitude);
+          obj.position.set(pos.x, pos.y, pos.z);
+          
+          // Update the counter text
+          const sprite = obj.children[1];
+          const canvas = (sprite.material as THREE.SpriteMaterial).map!.source.data as HTMLCanvasElement;
+          const ctx = canvas.getContext('2d')!;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 32px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(d.count.toString(), canvas.width/2, canvas.height/2);
+          (sprite.material as THREE.SpriteMaterial).map!.needsUpdate = true;
+        }}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
@@ -173,7 +220,7 @@ const GlobeViz = ({ regions, currentRegion }: CounterProps) => {
 
         hexPolygonAltitude={0.01}
         hexPolygonsData={countries.features}
-        hexPolygonColor={() => styles.hexPolygonColor} // Full opacity
+        hexPolygonColor={() => styles.hexPolygonColor}
         hexPolygonResolution={3}
         hexPolygonUseDots={true}
         hexPolygonMargin={0.7}
