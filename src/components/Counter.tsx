@@ -118,7 +118,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       return {
         lat,
         lng,
-        size: region === currentRegion ? 0.5 : 1,
+        size: region === currentRegion ? 1.5 : 1,
         color: region === currentRegion ? '#5CC5B9' : "#9241D3",
         region,
         count: regionData?.count ?? 0,

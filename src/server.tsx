@@ -136,13 +136,16 @@ async function getAllCounts(): Promise<RegionState[]> {
   return Promise.all(countPromises);
 }
 
+let BUILD_TIMESTAMP = Date.now();
+
 // Get cached client bundle
 async function getClientBundle() {
-  if (!clientBundle) {
+  if (!clientBundle || process.env.NODE_ENV !== 'production') {
+    console.log("Firing bundle!");
     const build = await Bun.build({
       entrypoints: ['./src/client.tsx'],
       outdir: './public',
-      naming: '[name].js',
+      naming: `[name].${BUILD_TIMESTAMP}.js`,
     });
     clientBundle = build.outputs[0];
   }
@@ -179,6 +182,21 @@ async function incrementCounter(): Promise<number> {
 // Initialize Redis connections
 setupRedisConnections().catch(console.error);
 
+const cacheControl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return { 
+      'Cache-Control': 'public, max-age=31536000',
+      'Pragma': '',
+      'Expires': '',
+    }
+  }
+  return {
+    'Cache-Control': 'no-cache, no-store, must-revalidate', 
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  }
+}
+
 const server = Bun.serve({
   port: 3000,
   async fetch(req) {
@@ -199,12 +217,14 @@ const server = Bun.serve({
     }
   
     // Serve cached client bundle
-    if (url.pathname === '/client.js') {
+    if (url.pathname.startsWith('/client.')) {
       const bundle = await getClientBundle();
       return new Response(bundle, {
         headers: { 
           'Content-Type': 'text/javascript',
-          'Cache-Control': 'public, max-age=31536000'
+          // Disable caching in development
+          // TODO: NODE_ENV == production cache this
+          ...cacheControl(),
         }
       });
     }
@@ -233,7 +253,7 @@ const server = Bun.serve({
                 box-sizing: border-box;
               }
             </style>
-            <script src="/client.js" type="module" defer></script>
+            <script src="/client.${BUILD_TIMESTAMP}.js" type="module" defer></script>
           </head>
           <body>
             <div id="root">${content}</div>
