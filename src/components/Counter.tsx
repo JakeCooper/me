@@ -406,7 +406,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const distance = R * c;
             
-            const SPEED = 2000;
+            const SPEED = 4000;
             const animationTime = distance * SPEED / 1000;
       
             // Create unique ID for this connection
