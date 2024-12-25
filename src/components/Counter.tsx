@@ -152,11 +152,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       endLat: conn.to.lat,
       endLng: conn.to.lng,
       color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      // These values create the dashed line effect
-      dashLength: 0.5,
-      dashGap: 0.5,
-      stroke: 1,
-      dashInitialGap: Math.random(), // Offset each arc's animation
+      // Make the dash itself very short
+      dashLength: 0.1,
+      // Make the gap very long - almost the entire path
+      dashGap: 1,
+      // Start from the beginning
+      dashInitialGap: 0,
       // Lower altitude for flatter arcs
       altitude: 0.1
     })),
@@ -266,11 +267,10 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcsData={arcData}
         arcColor={'color'}
         arcAltitude={'altitude'}
-        arcStroke={'stroke'}
+        arcStroke={1.5}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
-        arcDashInitialGap={'dashInitialGap'}
-        arcDashAnimateTime={2000}
+        arcDashAnimateTime={1000}
         arcCurveType="great-circle"
         arcCurveResolution={64}
         
