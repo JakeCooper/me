@@ -339,6 +339,7 @@ const getCachedLocation = (): CachedLocation | null => {
   return data;
 };
 
+const IP_URL = process.env.NODE_ENV == "production" ? 'https://ip-api.com/json' : 'http://ip-api.com/json';
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
@@ -360,7 +361,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
     }
   
     // If no cache, fetch from API
-    fetch('http://ip-api.com/json')
+    fetch(IP_URL)
       .then(res => res.json())
       .then(data => {
         const location = {
