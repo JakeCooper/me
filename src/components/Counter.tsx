@@ -171,6 +171,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         dashGap: 1,
         dashInitialGap: 0,
         altitude: 0.1,
+        stroke: 0.5,
         // Animation time based on distance
         animationTime: distance * SPEED / 1000,
       };
@@ -281,7 +282,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcsData={arcData}
         arcColor={'color'}
         arcAltitude={'altitude'}
-        arcStroke={1.5}
+        arcStroke={'stroke'}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
         arcDashAnimateTime={d => d.animationTime}
