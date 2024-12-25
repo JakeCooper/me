@@ -23,6 +23,18 @@ interface Connection {
   };
 }
 
+// New interface for the connections state
+interface ConnectionsMap {
+  [key: string]: Connection;
+}
+
+// Update the GlobeViz props interface
+interface GlobeVizProps extends CounterProps {
+  connections: ConnectionsMap;  // Changed from Connection[]
+  userLocation: { lat: number; lng: number; } | null;
+}
+
+
 interface CounterProps {
   regions: RegionData[];
   currentRegion: string;
@@ -91,7 +103,7 @@ if (typeof window !== 'undefined') {
   ReactGlobe = globe;
 }
 
-const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
+const GlobeViz = ({ regions, currentRegion, connections = {}, userLocation }: GlobeVizProps) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -146,7 +158,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
   // Setup arcs data
   const arcData = useMemo(() => 
-    connections.map(conn => {
+    Object.values(connections).map(conn => {
       // Calculate distance between points using the Haversine formula
       const R = 6371; // Earth's radius in km
       const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
@@ -171,6 +183,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         dashGap: 1,
         dashInitialGap: 0,
         altitude: 0.1,
+        stroke: 0.5,
         // Animation time based on distance
         animationTime: distance * SPEED / 1000,
       };
@@ -281,7 +294,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcsData={arcData}
         arcColor={'color'}
         arcAltitude={'altitude'}
-        arcStroke={1.5}
+        arcStroke={'stroke'}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
         arcDashAnimateTime={d => d.animationTime}
@@ -316,7 +329,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
-  const [connections, setConnections] = React.useState<Connection[]>([]);
+  const [connections, setConnections] = React.useState<Record<string, Connection>>({});
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
@@ -382,15 +395,35 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             );
           }
           if (data.connection) {
-            setConnections(prev => [...prev, data.connection]);
+            // Calculate distance for animation timing
+            const R = 6371; // Earth's radius in km
+            const dLat = (data.connection.to.lat - data.connection.from.lat) * Math.PI / 180;
+            const dLon = (data.connection.to.lng - data.connection.from.lng) * Math.PI / 180;
+            const a = 
+              Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(data.connection.from.lat * Math.PI / 180) * Math.cos(data.connection.to.lat * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            
+            const SPEED = 2000;
+            const animationTime = distance * SPEED / 1000;
+      
+            // Create unique ID for this connection
+            const connId = `${data.connection.from.lat}-${data.connection.from.lng}-${Date.now()}`;
+            
+            setConnections(prev => ({
+              ...prev,
+              [connId]: data.connection
+            }));
+      
+            // Remove this specific connection after animation completes
             setTimeout(() => {
-              setConnections(prev =>
-                prev.filter(c =>
-                  c.from.lat !== data.connection.from.lat ||
-                  c.from.lng !== data.connection.from.lng
-                )
-              );
-            }, 2000);
+              setConnections(prev => {
+                const { [connId]: _, ...rest } = prev;
+                return rest;
+              });
+            }, animationTime + 100); // Small buffer for animation completion
           }
         }
       };
