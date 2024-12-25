@@ -159,20 +159,19 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       const distance = R * c;
     
       // Base speed in milliseconds per 1000km
-      const SPEED = 500; // Adjust this value to make animation faster/slower
-      
+      const SPEED = 5000; 
+  
       return {
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
         endLng: conn.to.lng,
         color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-        dashLength: 0.1,
-        dashGap: 1,
-        dashInitialGap: 0,
-        altitude: 0.1,
-        // Animation time based on distance
-        animationTime: distance * SPEED / 1000,
+        dashLength: 0.3,
+        dashGap: 0.7,
+        dashAnimateTime: distance * SPEED / 1000,
+        dashRepeatNum: 1,
+        altitude: 0.1
       };
     }),
     [connections, currentRegion]
