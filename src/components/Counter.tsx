@@ -151,7 +151,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? '#5CC5B9' : "#9241D3",
+      color: conn.to.region === currentRegion ? '#5CC5B9' : "#00ff00",
       stroke: 1,
       gap: 0.02,
       dash: 0.02,
