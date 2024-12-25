@@ -323,7 +323,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
+    fetch('http://ip-api.com/json')
       .then(res => res.json())
       .then(data => {
         setUserLocation({
