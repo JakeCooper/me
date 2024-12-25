@@ -146,21 +146,35 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
   // Setup arcs data
   const arcData = useMemo(() => 
-    connections.map(conn => ({
-      startLat: conn.from.lat,
-      startLng: conn.from.lng,
-      endLat: conn.to.lat,
-      endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-      // Make the dash itself very short
-      dashLength: 0.1,
-      // Make the gap very long - almost the entire path
-      dashGap: 1,
-      // Start from the beginning
-      dashInitialGap: 0,
-      // Lower altitude for flatter arcs
-      altitude: 0.1
-    })),
+    connections.map(conn => {
+      // Calculate distance between points using the Haversine formula
+      const R = 6371; // Earth's radius in km
+      const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
+      const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+    
+      // Base speed in milliseconds per 1000km
+      const SPEED = 500; // Adjust this value to make animation faster/slower
+      
+      return {
+        startLat: conn.from.lat,
+        startLng: conn.from.lng,
+        endLat: conn.to.lat,
+        endLng: conn.to.lng,
+        color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+        dashLength: 0.1,
+        dashGap: 1,
+        dashInitialGap: 0,
+        altitude: 0.1,
+        // Animation time based on distance
+        animationTime: Math.max(1000, distance * SPEED / 1000)
+      };
+    }),
     [connections, currentRegion]
   );
 
@@ -270,7 +284,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         arcStroke={1.5}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
-        arcDashAnimateTime={1000}
+        arcDashAnimateTime={d => d.animationTime}
         arcCurveType="great-circle"
         arcCurveResolution={64}
         
