@@ -159,7 +159,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       const distance = R * c;
     
       // Base speed in milliseconds per 1000km
-      const SPEED = 2500; // Adjust this value to make animation faster/slower
+      const SPEED = 2000; // Adjust this value to make animation faster/slower
       
       return {
         startLat: conn.from.lat,
