@@ -101,15 +101,11 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     }
   }, [globeEl.current]);
 
-  useEffect(() => {
-    // Only render globe once it's loaded
-    if (typeof window !== 'undefined' && globeEl.current) {
-      console.log('Globe is ready, settings:', {
-        datacenterPoints,
-        currentRegion
-      });
-    }
-  }, [globeEl.current]);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Setup points data with labels
   const datacenterPoints = useMemo(() => 
@@ -179,18 +175,26 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     [connections, currentRegion]
   );
 
-  // Auto-rotate
   useEffect(() => {
-    const globe = globeEl.current;
-    if (globe == null) return;
+    if (globeEl.current) {
+      const globe = globeEl.current;
+      
+      // Set initial position
+      globe.pointOfView(MAP_CENTER, 0);
+      
+      // Setup controls after ensuring position is set
+      requestAnimationFrame(() => {
+        globe.controls().autoRotate = true;
+        globe.controls().enableZoom = false;
+        globe.controls().autoRotateSpeed = -0.5;
+        
+        // Maybe add a small transition to opacity
+        setIsLoaded(true);
+      });
+    }
+  }, [globeEl.current]);
 
-    globe.pointOfView(MAP_CENTER, 0);
-    globe.controls().autoRotate = true;
-    globe.controls().enableZoom = false;
-    globe.controls().autoRotateSpeed = -0.5;
-  }, []);
-
-  return (
+  return mounted ? (
     <div style={{ 
       background: '#13111C',
       transition: 'opacity 0.3s ease-in-out',
@@ -310,7 +314,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         }
       />
     </div>
-  );
+  ): null;
 }
 
 interface CachedLocation {
@@ -385,84 +389,102 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   useEffect(() => {
     let reconnectTimer: number;
     let isConnecting = false;
-    
-    function connect() {
-      if (isConnecting) return;
-      isConnecting = true;
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const websocket = new WebSocket(`${protocol}//${window.location.host}`);
-      
-      websocket.onopen = () => {
-        console.log('WebSocket connected');
-        setStatus("connected");
-        setWs(websocket);
-        isConnecting = false;
-        initialConnection.current = false;
+    let mounted = true;
   
-        websocket.send(JSON.stringify({
-          type: "connected",
-          location: userLocation,
-        }));
-      };
-
-      websocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "state" && Array.isArray(data.regions)) {
-          setLocalRegions(data.regions);
-        }
-        if (data.type === "update") {
-          if (data.region) {
-            setLocalRegions(prevRegions =>
-              prevRegions.map(region =>
-                region.region === data.region
-                  ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
-                  : region
-              )
-            );
+    // Add a small delay to ensure client hydration is complete
+    const connectTimeout = setTimeout(() => {
+      function connect() {
+        if (!mounted || isConnecting) return;
+        isConnecting = true;
+  
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const websocket = new WebSocket(`${protocol}//${window.location.host}`);
+        
+        websocket.onopen = () => {
+          if (!mounted) {
+            websocket.close();
+            return;
           }
-          if (data.connection) {
-            setConnections(prev => [...prev, data.connection]);
-            setTimeout(() => {
-              setConnections(prev =>
-                prev.filter(c =>
-                  c.from.lat !== data.connection.from.lat ||
-                  c.from.lng !== data.connection.from.lng
+          console.log('WebSocket connected');
+          setStatus("connected");
+          setWs(websocket);
+          isConnecting = false;
+          initialConnection.current = false;
+  
+          if (userLocation) {
+            websocket.send(JSON.stringify({
+              type: "connected",
+              location: userLocation,
+            }));
+          }
+        };
+  
+        websocket.onmessage = (event) => {
+          if (!mounted) return;
+          const data = JSON.parse(event.data);
+          if (data.type === "state" && Array.isArray(data.regions)) {
+            setLocalRegions(data.regions);
+          }
+          if (data.type === "update") {
+            if (data.region) {
+              setLocalRegions(prevRegions =>
+                prevRegions.map(region =>
+                  region.region === data.region
+                    ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
+                    : region
                 )
               );
-            }, 2000);
+            }
+            if (data.connection) {
+              setConnections(prev => {
+                const newConnections = {
+                  ...prev,
+                  [`${Date.now()}`]: data.connection
+                };
+                return newConnections;
+              });
+            }
           }
+        };
+  
+        websocket.onclose = () => {
+          if (!mounted) return;
+          if (!initialConnection.current) {
+            console.log('WebSocket disconnected, attempting to reconnect...');
+            setStatus("reconnecting");
+          }
+          setWs(null);
+          isConnecting = false;
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(connect, 2000) as unknown as number;
+        };
+  
+        websocket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          if (!initialConnection.current && mounted) {
+            websocket.close();
+          }
+        };
+  
+        return websocket;
+      }
+  
+      const ws = connect();
+  
+      return () => {
+        if (ws) {
+          ws.close();
         }
       };
-
-      websocket.onclose = () => {
-        if (!initialConnection.current) {
-          console.log('WebSocket disconnected, attempting to reconnect...');
-          setStatus("reconnecting");
-        }
-        setWs(null);
-        isConnecting = false;
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connect, 2000) as unknown as number;
-      };
-
-      websocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        if (!initialConnection.current) {
-          websocket.close();
-        }
-      };
-
-      return websocket;
-    }
-
-    const ws = connect();
-
+    }, 100);
+  
+    // Cleanup function
     return () => {
+      mounted = false;
+      clearTimeout(connectTimeout);
       clearTimeout(reconnectTimer);
-      ws.close();
     };
-  }, [userLocation]);
+  }, [userLocation]); // Only reconnect if userLocation changes
 
   const incrementCounter = () => {
     if (ws?.readyState === WebSocket.OPEN && userLocation) {
@@ -541,7 +563,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           marginBottom: '1rem',
           lineHeight: '1.5'
         }}>
-          It's served via IP address 66.33.22.11 (φ^-1), by ASN 400940, and runs 
+          It's served via IP address 66.33.22.11, by ASN 400940, and runs 
           in {regions.length} different locations, across 3 different countries, 
           on servers we own.
         </p>
