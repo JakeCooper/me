@@ -92,10 +92,6 @@ if (typeof window !== 'undefined') {
 }
 
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
-  console.log('Regions:', regions);
-  console.log('Current Region:', currentRegion);
-  console.log('Connections:', connections);
-
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -123,7 +119,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         lat,
         lng,
         size: region === currentRegion ? 0.5 : 1,
-        color: region === currentRegion ? "#00FF00" : "#9241D3",
+        color: region === currentRegion ? '#5CC5B9' : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -155,7 +151,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
       startLng: conn.from.lng,
       endLat: conn.to.lat,
       endLng: conn.to.lng,
-      color: conn.to.region === currentRegion ? "#FF0000" : "#9241D3",
+      color: conn.to.region === currentRegion ? '#5CC5B9' : "#9241D3",
       stroke: 1,
       gap: 0.02,
       dash: 0.02,
