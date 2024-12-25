@@ -233,7 +233,7 @@ const server = Bun.serve({
                 box-sizing: border-box;
               }
             </style>
-            <script src="/client.js?v=${Date.now()}" defer></script>
+            <script src="/client.js" defer></script>
           </head>
           <body>
             <div id="root">${content}</div>
