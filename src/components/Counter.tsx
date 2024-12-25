@@ -437,6 +437,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             }
             if (data.connection) {
               setConnections(prev => [...prev, data.connection]);
+            }
           }
         };
   
