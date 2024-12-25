@@ -146,35 +146,20 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
   // Setup arcs data
   const arcData = useMemo(() => 
-    connections.map(conn => {
-      // Calculate distance between points
-      const startLat = conn.from.lat * Math.PI/180;
-      const startLng = conn.from.lng * Math.PI/180;
-      const endLat = conn.to.lat * Math.PI/180;
-      const endLng = conn.to.lng * Math.PI/180;
-      
-      // Great circle distance formula
-      const distance = Math.acos(
-        Math.sin(startLat) * Math.sin(endLat) +
-        Math.cos(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng)
-      );
-    
-      return {
-        startLat: conn.from.lat,
-        startLng: conn.from.lng,
-        endLat: conn.to.lat,
-        endLng: conn.to.lng,
-        // Arc height proportional to distance
-        altitude: distance * 0.5, // Play with this multiplier
-        color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-        stroke: 1,
-        gap: 0.02,
-        dash: 0.02,
-        // Remove the arcAltitudeAutoScale if you're using custom altitude
-        // scale: 0.3,
-        time: 2000,
-      };
-    }),
+    connections.map(conn => ({
+      startLat: conn.from.lat,
+      startLng: conn.from.lng,
+      endLat: conn.to.lat,
+      endLng: conn.to.lng,
+      color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+      // These values create the dashed line effect
+      dashLength: 0.5,
+      dashGap: 0.5,
+      stroke: 1,
+      dashInitialGap: Math.random(), // Offset each arc's animation
+      // Lower altitude for flatter arcs
+      altitude: 0.1
+    })),
     [connections, currentRegion]
   );
 
@@ -277,14 +262,17 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
 
           obj.quaternion.copy(globeEl.current.camera().quaternion);
         }}
-        
+
         arcsData={arcData}
         arcColor={'color'}
+        arcAltitude={'altitude'}
         arcStroke={'stroke'}
-        arcDashGap={'gap'}
-        arcDashLength={'dash'}
-        arcAltitudeAutoScale={'scale'}
-        arcDashAnimateTime={'time'}
+        arcDashLength={'dashLength'}
+        arcDashGap={'dashGap'}
+        arcDashInitialGap={'dashInitialGap'}
+        arcDashAnimateTime={2000}
+        arcCurveType="great-circle"
+        arcCurveResolution={64}
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
