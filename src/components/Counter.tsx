@@ -436,14 +436,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               );
             }
             if (data.connection) {
-              setConnections(prev => {
-                const newConnections = {
-                  ...prev,
-                  [`${Date.now()}`]: data.connection
-                };
-                return newConnections;
-              });
-            }
+              setConnections(prev => [...prev, data.connection]);
           }
         };
   
