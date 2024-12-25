@@ -157,6 +157,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
+    
+      // Base speed in milliseconds per 1000km
+      const SPEED = 4000; // Adjust this value to make animation faster/slower
       
       return {
         startLat: conn.from.lat,
@@ -169,7 +172,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         dashInitialGap: 0,
         altitude: 0.1,
         // Animation time based on distance
-        animationTime: distance,
+        animationTime: distance * SPEED / 1000,
       };
     }),
     [connections, currentRegion]
