@@ -172,7 +172,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         dashInitialGap: 0,
         altitude: 0.1,
         // Animation time based on distance
-        animationTime: Math.max(1000, distance * SPEED / 1000)
+        animationTime: distance * SPEED / 1000,
       };
     }),
     [connections, currentRegion]
