@@ -237,7 +237,7 @@ const server = Bun.serve({
       `<!DOCTYPE html>
         <html>
           <head>
-            <title>Global Counter Network - ${REGION}</title>
+            <title>jakecooper.me</title>
             <style>
               html, 
               body, 
