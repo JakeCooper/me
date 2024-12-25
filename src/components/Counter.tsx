@@ -364,6 +364,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
     fetch(IP_URL)
       .then(res => res.json())
       .then(data => {
+        console.log("GOT LOCATION", data);
         const location = {
           lat: data.lat,
           lng: data.lon
