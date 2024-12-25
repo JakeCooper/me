@@ -203,7 +203,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         
         customLayerData={[...datacenterPoints, ...(userPoint ? [userPoint] : [])]}
         customThreeObject={d => {
-          console.log('Creating point with data:', d); // Debug log
           const group = new THREE.Group();
           
           // Create base mesh
@@ -324,24 +323,32 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setUserLocation({
-            lat: DATACENTER_LOCATIONS[currentRegion][0],
-            lng: DATACENTER_LOCATIONS[currentRegion][1]
-          });
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        setUserLocation({
+          lat: data.latitude,
+          lng: data.longitude
+        });
+        
+        // Optional: Still get more precise location if needed
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              setUserLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              });
+            },
+            (error) => console.error("Error getting precise location:", error)
+          );
         }
-      );
-    }
-  }, [currentRegion]);
+      })
+      .catch(error => {
+        console.error("Error getting IP location:", error);
+        // We're already using the fallback location from initial state
+      });
+  }, []); 
 
   useEffect(() => {
     let reconnectTimer: number;
