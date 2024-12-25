@@ -313,6 +313,28 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
   );
 }
 
+interface CachedLocation {
+  lat: number;
+  lng: number;
+  timestamp: number;
+}
+
+// Function to get cached location
+const getCachedLocation = (): CachedLocation | null => {
+  const cached = localStorage.getItem('userLocation');
+  if (!cached) return null;
+  
+  const data = JSON.parse(cached) as CachedLocation;
+  const TTL = 60 * 1000; // 1 minute in milliseconds
+  
+  if (Date.now() - data.timestamp > TTL) {
+    localStorage.removeItem('userLocation');
+    return null;
+  }
+  
+  return data;
+};
+
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
@@ -323,32 +345,42 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
+    // First try cache
+    const cached = getCachedLocation();
+    if (cached) {
+      setUserLocation({
+        lat: cached.lat,
+        lng: cached.lng
+      });
+      return;
+    }
+  
+    // If no cache, fetch from API
     fetch('http://ip-api.com/json')
       .then(res => res.json())
       .then(data => {
-        setUserLocation({
-          lat: data.latitude,
-          lng: data.longitude
-        });
+        const location = {
+          lat: data.lat,
+          lng: data.lon
+        };
         
-        // Optional: Still get more precise location if needed
-        if ("geolocation" in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setUserLocation({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-              });
-            },
-            (error) => console.error("Error getting precise location:", error)
-          );
-        }
+        setUserLocation(location);
+        
+        // Cache the result with timestamp
+        localStorage.setItem('userLocation', JSON.stringify({
+          ...location,
+          timestamp: Date.now()
+        }));
       })
       .catch(error => {
         console.error("Error getting IP location:", error);
-        // We're already using the fallback location from initial state
+        // Fallback to default location
+        setUserLocation({
+          lat: DATACENTER_LOCATIONS[currentRegion]?.[0] ?? DEFAULT_LOCATION.lat,
+          lng: DATACENTER_LOCATIONS[currentRegion]?.[1] ?? DEFAULT_LOCATION.lng
+        });
       });
-  }, []); 
+  }, []);
 
   useEffect(() => {
     let reconnectTimer: number;
