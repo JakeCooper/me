@@ -339,8 +339,6 @@ const getCachedLocation = (): CachedLocation | null => {
   return data;
 };
 
-const IP_URL = process.env.NODE_ENV == "production" ? 'https://ip-api.com/json' : 'http://ip-api.com/json';
-
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
   const [connections, setConnections] = React.useState<Connection[]>([]);
@@ -350,43 +348,24 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
-    // First try cache
-    const cached = getCachedLocation();
-    if (cached) {
-      setUserLocation({
-        lat: cached.lat,
-        lng: cached.lng
-      });
-      return;
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setUserLocation({
+            lat: DATACENTER_LOCATIONS[currentRegion][0],
+            lng: DATACENTER_LOCATIONS[currentRegion][1]
+          });
+        }
+      );
     }
-  
-    // If no cache, fetch from API
-    fetch(IP_URL)
-      .then(res => res.json())
-      .then(data => {
-        console.log("GOT LOCATION", data);
-        const location = {
-          lat: data.lat,
-          lng: data.lon
-        };
-        
-        setUserLocation(location);
-        
-        // Cache the result with timestamp
-        localStorage.setItem('userLocation', JSON.stringify({
-          ...location,
-          timestamp: Date.now()
-        }));
-      })
-      .catch(error => {
-        console.error("Error getting IP location:", error);
-        // Fallback to default location
-        setUserLocation({
-          lat: DATACENTER_LOCATIONS[currentRegion]?.[0] ?? DEFAULT_LOCATION.lat,
-          lng: DATACENTER_LOCATIONS[currentRegion]?.[1] ?? DEFAULT_LOCATION.lng
-        });
-      });
-  }, []);
+  }, [currentRegion]);
 
   useEffect(() => {
     let reconnectTimer: number;
