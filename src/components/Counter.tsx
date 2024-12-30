@@ -442,12 +442,19 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           if (!mounted) return;
           const data = JSON.parse(event.data);
           
-          if (data.type === "state" && Array.isArray(data.regions)) {
-            console.log('Received initial state:', data);
+          if (data.type === "state") {
+            console.log('Processing initial state');
+            console.log('- Regions:', data.regions);
+            console.log('- Connected Users:', data.connectedUsers);
+            console.log('- Connections:', data.connections);
+            
             setLocalRegions(data.regions);
             if (data.connectedUsers) {
-              console.log('Setting connected users:', data.connectedUsers);
               setConnectedUsers(data.connectedUsers);
+            }
+            if (data.connections && Array.isArray(data.connections)) {
+              console.log('Setting initial connections to:', data.connections);
+              setConnections(data.connections);
             }
           }
           
@@ -470,10 +477,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             if (data.connection) {
               console.log('Adding new connection:', data.connection);
               setConnections(prev => {
-                console.log('Previous connections:', prev);
-                const newConnections = [...prev, data.connection];
-                console.log('Updated connections:', newConnections);
-                return newConnections;
+                console.log('Current connections before update:', prev);
+                return [...prev, data.connection];
               });
             }
           }
