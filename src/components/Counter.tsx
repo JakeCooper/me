@@ -11,6 +11,7 @@ interface RegionData {
 }
 
 interface Connection {
+  id: string;
   from: {
     lat: number;
     lng: number;
@@ -173,6 +174,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
+
+      // Base speed in milliseconds per 1000km
+      const SPEED = 4000; // Adjust this value to make animation faster/slower
 
       return {
         id: conn.id,
