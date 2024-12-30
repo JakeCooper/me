@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useMemo } from "react";
-import { Color, MeshPhongMaterial } from "three";
+import { Color } from "three";
 import * as THREE from 'three';
 import { countries } from "./countries";
+import { applyDeviceOffset } from "./fingerprint";
 
 interface RegionData {
   region: string;
@@ -375,10 +376,13 @@ export function Counter({ regions, currentRegion }: CounterProps) {
     fetch(IP_URL)
       .then(res => res.json())
       .then(data => {
-        const location = {
+        const baseLocation = {
           lat: data.latitude,
           lng: data.longitude
         };
+        
+        // Apply the device-specific offset
+        const location = applyDeviceOffset(baseLocation);
         
         setUserLocation(location);
         
@@ -390,11 +394,12 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       })
       .catch(error => {
         console.error("Error getting IP location:", error);
-        // Fallback to default location
-        setUserLocation({
+        // Fallback to default location with offset
+        const baseLocation = {
           lat: DATACENTER_LOCATIONS[currentRegion]?.[0] ?? DEFAULT_LOCATION.lat,
           lng: DATACENTER_LOCATIONS[currentRegion]?.[1] ?? DEFAULT_LOCATION.lng
-        });
+        };
+        setUserLocation(applyDeviceOffset(baseLocation));
       });
   }, [currentRegion]);
 
