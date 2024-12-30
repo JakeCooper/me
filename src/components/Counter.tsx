@@ -23,9 +23,14 @@ interface Connection {
   };
 }
 
-interface CounterProps {
+interface GlobeVizProps {
   regions: RegionData[];
   currentRegion: string;
+  connections: Connection[];
+  userLocation: { lat: number; lng: number } | null;
+  connectedUsers: Array<{ lat: number; lng: number }>;
+  width?: number;
+  height?: number;
 }
 
 interface GlobeStyles {
@@ -91,7 +96,7 @@ if (typeof window !== 'undefined') {
   ReactGlobe = globe;
 }
 
-const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: CounterProps & { connections: Connection[], userLocation: { lat: number, lng: number } | null }) => {
+const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -124,16 +129,22 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
     [regions, currentRegion]
   );
 
-  const userPoint = useMemo(() =>
-    userLocation ? {
+  const userPoints = useMemo(() => [
+    ...(userLocation ? [{
       lat: userLocation.lat,
       lng: userLocation.lng,
       size: 1,
-      color: 'green',
-      type: 'user'
-    } : null,
-    [userLocation]
-  );
+      color: '#22c55e', // green-500
+      type: 'currentUser'
+    }] : []),
+    ...connectedUsers.map(user => ({
+      lat: user.lat,
+      lng: user.lng,
+      size: 1,
+      color: '#22c55e', // green-500
+      type: 'connectedUser'
+    }))
+  ], [userLocation, connectedUsers]);
 
   const styles: GlobeStyles = useMemo(
     () => globeStyles["dark"],
@@ -205,7 +216,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation }: Co
         width={800}
         height={800}
         
-        customLayerData={[...datacenterPoints, ...(userPoint ? [userPoint] : [])]}
+        customLayerData={[...datacenterPoints, ...userPoints]}
         customThreeObject={d => {
           const group = new THREE.Group();
           
@@ -387,6 +398,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       });
   }, [currentRegion]);
 
+  const [connectedUsers, setConnectedUsers] = React.useState<Array<{ lat: number; lng: number }>>([]);
+
   useEffect(() => {
     let reconnectTimer: number;
     let isConnecting = false;
@@ -423,9 +436,18 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         websocket.onmessage = (event) => {
           if (!mounted) return;
           const data = JSON.parse(event.data);
+          
           if (data.type === "state" && Array.isArray(data.regions)) {
             setLocalRegions(data.regions);
+            if (data.connectedUsers) {
+              setConnectedUsers(data.connectedUsers);
+            }
           }
+          
+          if (data.type === "userUpdate" && data.connectedUsers) {
+            setConnectedUsers(data.connectedUsers);
+          }
+          
           if (data.type === "update") {
             if (data.region) {
               setLocalRegions(prevRegions =>
@@ -617,6 +639,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           currentRegion={currentRegion} 
           connections={connections} 
           userLocation={userLocation}
+          connectedUsers={connectedUsers}
           width={1000}
           height={1000}
         />

@@ -2,6 +2,7 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { Counter } from "./components/Counter";
 import { createClient } from 'redis';
+import type { ServerWebSocket } from "bun";
 
 // Types
 interface RegionState {
@@ -41,6 +42,8 @@ let lastCacheTime = 0;
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 const subscribers = new Map<string, ReturnType<typeof createClient>>();
 const latestCounts = new Map<string, RegionState>();
+const connectedUsers = new Map<ServerWebSocket, { lat: number; lng: number }>();
+
 const clients = new Set<WebSocket>();
 let subscribersInitialized = false;
 
@@ -277,7 +280,12 @@ const server = Bun.serve({
       
       // Send current state from cache immediately
       const regions = Array.from(latestCounts.values());
-      ws.send(JSON.stringify({ type: "state", regions }));
+      const connectedLocations = Array.from(connectedUsers.values());
+      ws.send(JSON.stringify({ 
+        type: "state", 
+        regions,
+        connectedUsers: connectedLocations
+      }));
     
       // Broadcast "connected" event to all clients
       const update = {
@@ -290,19 +298,57 @@ const server = Bun.serve({
       await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
     },
     
-    close(ws) {
+    async close(ws) {
+      // Remove user location when they disconnect
+      connectedUsers.delete(ws);
       clients.delete(ws);
+      
+      // Broadcast updated user list to all clients in parallel
+      const connectedLocations = Array.from(connectedUsers.values());
+      const update = {
+        type: "userUpdate",
+        connectedUsers: connectedLocations
+      };
+      
+      const wsMessage = JSON.stringify(update);
+      await Promise.all(
+        Array.from(clients)
+          .filter(client => client !== ws)
+          .map(client => client.send(wsMessage))
+      );
     },
     
     async message(ws, message) {
       try {
         const data = JSON.parse(message.toString());
+        
         if (data.type === "connected" && data.location) {
+          // Store user location
+          connectedUsers.set(ws, {
+            lat: data.location.lat,
+            lng: data.location.lng
+          });
+          
+          // Prepare updates
+          const connectedLocations = Array.from(connectedUsers.values());
+          const userUpdate = {
+            type: "userUpdate",
+            connectedUsers: connectedLocations
+          };
+          
+          // Broadcast to other clients in parallel
+          const wsMessage = JSON.stringify(userUpdate);
+          const broadcastPromise = Promise.all(
+            Array.from(clients)
+              .filter(client => client !== ws)
+              .map(client => client.send(wsMessage))
+          );
+          
           // Increment counter
           const newValue = await incrementCounter();
-    
-          // Create update message with location data
-          const update = {
+          
+          // Create connection update
+          const connectionUpdate = {
             type: "update",
             region: REGION,
             count: newValue,
@@ -321,59 +367,23 @@ const server = Bun.serve({
               }
             }
           };
-    
-          // Update local cache and broadcast updates in parallel
-          latestCounts.set(REGION, {
-            region: REGION,
-            count: newValue,
-            lastUpdate: update.lastUpdate
-          });
           
-          const wsMessage = JSON.stringify(update);
+          // Broadcast all updates in parallel
+          const connectionMessage = JSON.stringify(connectionUpdate);
           await Promise.all([
-            // Send to WebSocket clients
-            ...Array.from(clients).map(client => client.send(wsMessage)),
+            broadcastPromise,
+            // Send to all WebSocket clients
+            ...Array.from(clients).map(client => 
+              client.send(connectionMessage)
+            ),
             // Broadcast to Redis
             ...Array.from(redisClients.values()).map(client => 
-              client.publish('counter-updates', JSON.stringify(update))
+              client.publish('counter-updates', connectionMessage)
             )
           ]);
         }
         
-        if (data.type === "increment" && data.location) {
-          const newValue = await incrementCounter();
-          
-          const update = {
-            type: "update",
-            region: REGION,
-            count: newValue,
-            lastUpdate: new Date().toISOString(),
-            connection: {
-              from: {
-                lat: data.location.lat,
-                lng: data.location.lng,
-                city: "Unknown",
-                country: "Unknown"
-              },
-              to: {
-                region: REGION,
-                lat: DATACENTER_LOCATIONS[REGION][0],
-                lng: DATACENTER_LOCATIONS[REGION][1]
-              }
-            }
-          };
-          
-          // Broadcast updates in parallel
-          const wsMessage = JSON.stringify(update);
-          await Promise.all([
-            // Send to WebSocket clients
-            ...Array.from(clients).map(client => client.send(wsMessage)),
-            // Broadcast to Redis
-            ...Array.from(redisClients.values()).map(client => 
-              client.publish('counter-updates', JSON.stringify(update))
-            )
-          ]);
-        }
+        // Keep rest of message handler...
       } catch (error) {
         console.error("Error processing message:", error);
       }
