@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { Color } from "three";
 import * as THREE from 'three';
 import { countries } from "./countries";
@@ -153,25 +153,33 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     [],
   );
 
+  const arcsRef = useRef([]);
+  const animationTimesRef = useRef(new Map());
+
   // Setup arcs data
-  const arcData = useMemo(() => 
-    connections.map(conn => {
-      // Calculate distance between points using the Haversine formula
-      const R = 6371; // Earth's radius in km
-      const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
-      const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-    
-      // Base speed in milliseconds per 1000km
-      const SPEED = 4000; // Adjust this value to make animation faster/slower
-      
+  const arcData = useMemo(() => {
+    if (arcsRef.current.length === connections.length &&
+        arcsRef.current.every((arc, i) => arc.id === connections[i].id)) {
+      return arcsRef.current;
+    }
+
+    arcsRef.current = connections.map(conn => {
+      // If we haven't calculated this connection's time before, do it now
+      if (!animationTimesRef.current.has(conn.id)) {
+        const R = 6371;
+        const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
+        const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        animationTimesRef.current.set(conn.id, distance * 4);
+      }
+
       return {
-        id: conn.id, // Add ID here
+        id: conn.id,
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
@@ -181,12 +189,17 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         dashGap: 1,
         dashInitialGap: 0,
         altitude: 0.1,
-        stroke: 0.5,
-        animationTime: distance * SPEED / 1000,
+        stroke: 0.5
       };
-    }),
-    [connections, currentRegion]
-  );
+    });
+    
+    return arcsRef.current;
+  }, [connections, currentRegion]);
+
+  // Return animation time from our stable ref
+  const getAnimationTime = useCallback((d) => {
+    return animationTimesRef.current.get(d.id) || 4000;
+  }, []);
 
   useEffect(() => {
     if (globeEl.current) {
@@ -301,7 +314,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         arcStroke={'stroke'}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
-        arcDashAnimateTime={d => d.animationTime}
+        arcDashAnimateTime={getAnimationTime}  // Use callback instead of direct time
         arcCurveType="great-circle"
         arcCurveResolution={64}
         getArcKey={d => d.id}  // Add this line to maintain animation state
