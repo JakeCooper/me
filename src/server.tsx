@@ -42,8 +42,12 @@ let lastCacheTime = 0;
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 const subscribers = new Map<string, ReturnType<typeof createClient>>();
 const latestCounts = new Map<string, RegionState>();
-const connectedUsers = new Map<ServerWebSocket<unknown>, { lat: number; lng: number }>();
-const connections: Array<{
+// Store both location and connection for each user
+const connectedUsers = new Map<ServerWebSocket<unknown>, {
+  location: { lat: number; lng: number };
+  connection: Connection;
+}>();
+interface Connection {
   from: {
     lat: number;
     lng: number;
@@ -55,7 +59,7 @@ const connections: Array<{
     lat: number;
     lng: number;
   };
-}> = [];
+}
 
 const clients = new Set<WebSocket>();
 let subscribersInitialized = false;
@@ -293,23 +297,24 @@ const server = Bun.serve({
       
       // Send current state including existing connections
       const regions = Array.from(latestCounts.values());
-      const connectedLocations = Array.from(connectedUsers.values());
+      const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
+      const existingConnections = Array.from(connectedUsers.values()).map(u => u.connection);
       
       await ws.send(JSON.stringify({ 
         type: "state", 
         regions,
         connectedUsers: connectedLocations,
-        connections  // Send existing connections
+        connections: existingConnections  // Send all existing connections
       }));
     },
     
     async close(ws) {
-      // Remove user location when they disconnect
+      // Remove user when they disconnect
       connectedUsers.delete(ws);
       clients.delete(ws);
       
       // Broadcast updated user list to all clients in parallel
-      const connectedLocations = Array.from(connectedUsers.values());
+      const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
       const update = {
         type: "userUpdate",
         connectedUsers: connectedLocations
@@ -328,14 +333,8 @@ const server = Bun.serve({
         const data = JSON.parse(message.toString());
         
         if (data.type === "connected" && data.location) {
-          // Store user location
-          connectedUsers.set(ws, {
-            lat: data.location.lat,
-            lng: data.location.lng
-          });
-          
-          // Create new connection
-          const connection = {
+          // Create connection data
+          const connection: Connection = {
             from: {
               lat: data.location.lat,
               lng: data.location.lng,
@@ -349,11 +348,17 @@ const server = Bun.serve({
             }
           };
           
-          // Add to connections array
-          connections.push(connection);
+          // Store both location and connection
+          connectedUsers.set(ws, {
+            location: {
+              lat: data.location.lat,
+              lng: data.location.lng
+            },
+            connection
+          });
           
           // Prepare updates
-          const connectedLocations = Array.from(connectedUsers.values());
+          const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
           const userUpdate = {
             type: "userUpdate",
             connectedUsers: connectedLocations
