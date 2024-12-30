@@ -207,6 +207,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     }
   }, [globeEl.current]);
 
+  const arcDashAnimateTime = d => d.animationTime;
+
   return mounted ? (
     <div style={{ 
       background: '#13111C',
@@ -301,7 +303,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         arcStroke={'stroke'}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
-        arcDashAnimateTime={d => d.animationTime}
+        arcDashAnimateTime={arcDashAnimateTime}
         arcCurveType="great-circle"
         arcCurveResolution={64}
         
