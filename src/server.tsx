@@ -300,38 +300,41 @@ const server = Bun.serve({
       const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
       const existingConnections = Array.from(connectedUsers.values()).map(u => u.connection);
       
-      const initialState = { 
+      await ws.send(JSON.stringify({ 
         type: "state", 
         regions,
         connectedUsers: connectedLocations,
         connections: existingConnections
-      };
-      console.log('Sending initial state to new client:', initialState);
-      await ws.send(JSON.stringify(initialState));
+      }));
     },
     
     async close(ws) {
-      // Get the user's connection before removing them
-      const user = connectedUsers.get(ws);
+      // Get user data before removing
+      const userData = connectedUsers.get(ws);
       
       // Remove user when they disconnect
       connectedUsers.delete(ws);
       clients.delete(ws);
       
-      // Broadcast updated user list and connection removal to all clients in parallel
-      const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
-      const update = {
-        type: "userUpdate",
-        connectedUsers: connectedLocations,
-        disconnectedUser: user?.connection // Include the connection to be removed
-      };
-      
-      const wsMessage = JSON.stringify(update);
-      await Promise.all(
-        Array.from(clients)
-          .filter(client => client !== ws)
-          .map(client => client.send(wsMessage))
-      );
+      if (userData) {
+        // Broadcast updated user list and connection removal
+        const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
+        const update = {
+          type: "userUpdate",
+          connectedUsers: connectedLocations,
+          disconnectedUser: {
+            location: userData.location,
+            connection: userData.connection
+          }
+        };
+        
+        const wsMessage = JSON.stringify(update);
+        await Promise.all(
+          Array.from(clients)
+            .filter(client => client !== ws)
+            .map(client => client.send(wsMessage))
+        );
+      }
     },
     
     async message(ws, message) {
