@@ -168,7 +168,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
       const distance = R * c;
     
       // Base speed in milliseconds per 1000km
-      const SPEED = 2000; // Adjust this value to make animation faster/slower
+      const SPEED = 3000; // Adjust this value to make animation faster/slower
       
       return {
         id: conn.id, // Add ID here
