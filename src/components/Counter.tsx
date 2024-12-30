@@ -304,7 +304,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         arcDashAnimateTime={d => d.animationTime}
         arcCurveType="great-circle"
         arcCurveResolution={64}
-        getArcKey={d => d.id}  // Add this line to maintain animation state
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
