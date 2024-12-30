@@ -449,7 +449,12 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               setConnectedUsers(data.connectedUsers);
             }
             if (data.connections && Array.isArray(data.connections)) {
-              setConnections(data.connections);
+              // Instead of replacing, merge with existing while preserving animation state
+              setConnections(prev => {
+                const existingIds = new Set(prev.map(c => c.id));
+                const newConnections = data.connections.filter(c => !existingIds.has(c.id));
+                return [...prev, ...newConnections];
+              });
             }
           }
           
@@ -457,7 +462,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             if (data.connectedUsers) {
               setConnectedUsers(data.connectedUsers);
             }
-            if (data.disconnectedUser) {
+            if (data.disconnectedUser?.connection) {
+              // Keep the animation state for all other connections
               setConnections(prev => 
                 prev.filter(conn => conn.id !== data.disconnectedUser.connection.id)
               );
@@ -465,8 +471,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           }
           
           if (data.type === "update" && data.connection) {
+            // Only add if not already present
             setConnections(prev => {
-              // Avoid duplicate connections
               if (prev.some(conn => conn.id === data.connection.id)) {
                 return prev;
               }
