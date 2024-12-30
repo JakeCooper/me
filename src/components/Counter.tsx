@@ -170,6 +170,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
       const SPEED = 4000; // Adjust this value to make animation faster/slower
       
       return {
+        id: conn.id, // Add ID here
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
@@ -180,7 +181,6 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         dashInitialGap: 0,
         altitude: 0.1,
         stroke: 0.5,
-        // Animation time based on distance
         animationTime: distance * SPEED / 1000,
       };
     }),
@@ -303,6 +303,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         arcDashAnimateTime={d => d.animationTime}
         arcCurveType="great-circle"
         arcCurveResolution={64}
+        getArcKey={d => d.id}  // Add this line to maintain animation state
         
         backgroundColor={styles.backgroundColor}
         atmosphereColor={styles.atmosphereColor}
@@ -457,29 +458,20 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               setConnectedUsers(data.connectedUsers);
             }
             if (data.disconnectedUser) {
-              // Remove the disconnected user's connection using the connection data
               setConnections(prev => 
-                prev.filter(conn => 
-                  !(conn.from.lat === data.disconnectedUser.connection.from.lat && 
-                    conn.from.lng === data.disconnectedUser.connection.from.lng)
-                )
+                prev.filter(conn => conn.id !== data.disconnectedUser.connection.id)
               );
             }
           }
           
-          if (data.type === "update") {
-            if (data.region) {
-              setLocalRegions(prevRegions =>
-                prevRegions.map(region =>
-                  region.region === data.region
-                    ? { ...region, count: data.count, lastUpdate: data.lastUpdate }
-                    : region
-                )
-              );
-            }
-            if (data.connection) {
-              setConnections(prev => [...prev, data.connection]);
-            }
+          if (data.type === "update" && data.connection) {
+            setConnections(prev => {
+              // Avoid duplicate connections
+              if (prev.some(conn => conn.id === data.connection.id)) {
+                return prev;
+              }
+              return [...prev, data.connection];
+            });
           }
         };
   

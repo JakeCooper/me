@@ -48,6 +48,7 @@ const connectedUsers = new Map<ServerWebSocket<unknown>, {
   connection: Connection;
 }>();
 interface Connection {
+  id: string;  // Add unique id
   from: {
     lat: number;
     lng: number;
@@ -344,6 +345,7 @@ const server = Bun.serve({
         if (data.type === "connected" && data.location) {
           // Create connection data
           const connection: Connection = {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,  // Unique ID
             from: {
               lat: data.location.lat,
               lng: data.location.lng,
