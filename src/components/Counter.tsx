@@ -443,37 +443,31 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           const data = JSON.parse(event.data);
           
           if (data.type === "state") {
-            console.log('Processing initial state');
-            console.log('- Regions:', data.regions);
-            console.log('- Connected Users:', data.connectedUsers);
-            console.log('- Connections:', data.connections);
-            
             setLocalRegions(data.regions);
             if (data.connectedUsers) {
               setConnectedUsers(data.connectedUsers);
             }
-            if (data.disconnectedUser) {
-              // Remove the disconnected user's connection
-              setConnections(prev => 
-                prev.filter(conn => 
-                  !(conn.from.lat === data.disconnectedUser.from.lat && 
-                    conn.from.lng === data.disconnectedUser.from.lng)
-                )
-              );
-            }
             if (data.connections && Array.isArray(data.connections)) {
-              console.log('Setting initial connections to:', data.connections);
               setConnections(data.connections);
             }
           }
           
-          if (data.type === "userUpdate" && data.connectedUsers) {
-            console.log('Setting initial connections:', data.connections);
-            setConnectedUsers(data.connectedUsers);
+          if (data.type === "userUpdate") {
+            if (data.connectedUsers) {
+              setConnectedUsers(data.connectedUsers);
+            }
+            if (data.disconnectedUser) {
+              // Remove the disconnected user's connection using the connection data
+              setConnections(prev => 
+                prev.filter(conn => 
+                  !(conn.from.lat === data.disconnectedUser.connection.from.lat && 
+                    conn.from.lng === data.disconnectedUser.connection.from.lng)
+                )
+              );
+            }
           }
           
           if (data.type === "update") {
-            console.log('Received update:', data);
             if (data.region) {
               setLocalRegions(prevRegions =>
                 prevRegions.map(region =>
@@ -484,11 +478,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               );
             }
             if (data.connection) {
-              console.log('Adding new connection:', data.connection);
-              setConnections(prev => {
-                console.log('Current connections before update:', prev);
-                return [...prev, data.connection];
-              });
+              setConnections(prev => [...prev, data.connection]);
             }
           }
         };
