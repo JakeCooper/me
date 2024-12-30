@@ -11,7 +11,6 @@ interface RegionData {
 }
 
 interface Connection {
-  id: string;
   from: {
     lat: number;
     lng: number;
@@ -100,6 +99,7 @@ if (typeof window !== 'undefined') {
 
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
+  const arcsRef = useRef<any>([]);
   const [isLoaded, setIsLoaded] = React.useState(false);
 
   useEffect(() => {
@@ -154,8 +154,15 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
   );
 
   // Setup arcs data
-  const arcData = useMemo(() => 
-    connections.map(conn => {
+  const arcData = useMemo(() => {
+    // Only update if connections actually changed
+    if (arcsRef.current.length === connections.length &&
+        arcsRef.current.every((arc, i) => arc.id === connections[i].id)) {
+      return arcsRef.current;
+    }
+
+    // Calculate new arcs only if we need to
+    arcsRef.current = connections.map(conn => {
       // Calculate distance between points using the Haversine formula
       const R = 6371; // Earth's radius in km
       const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
@@ -166,12 +173,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
-    
-      // Base speed in milliseconds per 1000km
-      const SPEED = 4000; // Adjust this value to make animation faster/slower
-      
+
       return {
-        id: conn.id, // Add ID here
+        id: conn.id,
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
@@ -184,9 +188,10 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         stroke: 0.5,
         animationTime: distance * SPEED / 1000,
       };
-    }),
-    [connections, currentRegion]
-  );
+    });
+    
+    return arcsRef.current;
+  }, [connections, currentRegion]);
 
   useEffect(() => {
     if (globeEl.current) {
