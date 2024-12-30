@@ -42,7 +42,20 @@ let lastCacheTime = 0;
 const redisClients = new Map<string, ReturnType<typeof createClient>>();
 const subscribers = new Map<string, ReturnType<typeof createClient>>();
 const latestCounts = new Map<string, RegionState>();
-const connectedUsers = new Map<ServerWebSocket, { lat: number; lng: number }>();
+const connectedUsers = new Map<ServerWebSocket<unknown>, { lat: number; lng: number }>();
+const connections: Array<{
+  from: {
+    lat: number;
+    lng: number;
+    city: string;
+    country: string;
+  };
+  to: {
+    region: string;
+    lat: number;
+    lng: number;
+  };
+}> = [];
 
 const clients = new Set<WebSocket>();
 let subscribersInitialized = false;
@@ -278,24 +291,16 @@ const server = Bun.serve({
       await setupSubscribersIfNeeded();
       clients.add(ws);
       
-      // Send current state from cache immediately
+      // Send current state including existing connections
       const regions = Array.from(latestCounts.values());
       const connectedLocations = Array.from(connectedUsers.values());
-      ws.send(JSON.stringify({ 
+      
+      await ws.send(JSON.stringify({ 
         type: "state", 
         regions,
-        connectedUsers: connectedLocations
+        connectedUsers: connectedLocations,
+        connections  // Send existing connections
       }));
-    
-      // Broadcast "connected" event to all clients
-      const update = {
-        type: "connected",
-        region: REGION,
-        count: latestCounts.get(REGION)?.count ?? 0,
-        lastUpdate: new Date().toISOString(),
-      };
-      const wsMessage = JSON.stringify(update);
-      await Promise.all(Array.from(clients).map(client => client.send(wsMessage)));
     },
     
     async close(ws) {
@@ -329,6 +334,24 @@ const server = Bun.serve({
             lng: data.location.lng
           });
           
+          // Create new connection
+          const connection = {
+            from: {
+              lat: data.location.lat,
+              lng: data.location.lng,
+              city: "Unknown",
+              country: "Unknown"
+            },
+            to: {
+              region: REGION,
+              lat: DATACENTER_LOCATIONS[REGION][0],
+              lng: DATACENTER_LOCATIONS[REGION][1]
+            }
+          };
+          
+          // Add to connections array
+          connections.push(connection);
+          
           // Prepare updates
           const connectedLocations = Array.from(connectedUsers.values());
           const userUpdate = {
@@ -344,35 +367,21 @@ const server = Bun.serve({
               .map(client => client.send(wsMessage))
           );
           
-          // Increment counter
+          // Increment counter and create connection update
           const newValue = await incrementCounter();
-          
-          // Create connection update
           const connectionUpdate = {
             type: "update",
             region: REGION,
             count: newValue,
             lastUpdate: new Date().toISOString(),
-            connection: {
-              from: {
-                lat: data.location.lat,
-                lng: data.location.lng,
-                city: "Unknown",
-                country: "Unknown"
-              },
-              to: {
-                region: REGION,
-                lat: DATACENTER_LOCATIONS[REGION][0],
-                lng: DATACENTER_LOCATIONS[REGION][1]
-              }
-            }
+            connection
           };
           
           // Broadcast all updates in parallel
           const connectionMessage = JSON.stringify(connectionUpdate);
           await Promise.all([
             broadcastPromise,
-            // Send to all WebSocket clients
+            // Send to WebSocket clients
             ...Array.from(clients).map(client => 
               client.send(connectionMessage)
             ),
