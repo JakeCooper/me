@@ -101,7 +101,6 @@ if (typeof window !== 'undefined') {
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
-  const [activeArcs, setActiveArcs] = React.useState<Record<string, any>>({});
 
   useEffect(() => {
     if (globeEl.current) {
@@ -155,64 +154,38 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
   );
 
   // Setup arcs data
-  useEffect(() => {
-    const newActiveArcs = { ...activeArcs };
+  const arcData = useMemo(() => 
+    connections.map(conn => {
+      // Calculate distance between points using the Haversine formula
+      const R = 6371; // Earth's radius in km
+      const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
+      const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
     
-    // Process new connections
-    connections.forEach(conn => {
-      if (!newActiveArcs[conn.id]) {
-        // Calculate distance for new connection
-        const R = 6371; // Earth's radius in km
-        const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
-        const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
-        
-        // Base speed in milliseconds per 1000km
-        const SPEED = 3000;
-        
-        newActiveArcs[conn.id] = {
-          startLat: conn.from.lat,
-          startLng: conn.from.lng,
-          endLat: conn.to.lat,
-          endLng: conn.to.lng,
-          color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
-          dashLength: 0.1,
-          dashGap: 1,
-          dashInitialGap: 0,
-          altitude: 0.1,
-          stroke: 0.5,
-          animationStartTime: Date.now(),
-          animationDuration: distance * SPEED / 1000,
-        };
-      } else {
-        // Update color for existing arcs if needed
-        newActiveArcs[conn.id].color = conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3";
-      }
-    });
-    
-    // Remove arcs that are no longer in connections
-    const currentIds = new Set(connections.map(c => c.id));
-    Object.keys(newActiveArcs).forEach(id => {
-      if (!currentIds.has(id)) {
-        delete newActiveArcs[id];
-      }
-    });
-    
-    setActiveArcs(newActiveArcs);
-  }, [connections, currentRegion]);
-
-   // Convert active arcs to array for Globe.GL
-   const arcData = useMemo(() => 
-    Object.entries(activeArcs).map(([id, arc]) => ({
-      ...arc,
-      id,
-    })),
-    [activeArcs]
+      // Base speed in milliseconds per 1000km
+      const SPEED = 3000; // Adjust this value to make animation faster/slower
+      
+      return {
+        id: conn.id, // Add ID here
+        startLat: conn.from.lat,
+        startLng: conn.from.lng,
+        endLat: conn.to.lat,
+        endLng: conn.to.lng,
+        color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+        dashLength: 0.1,
+        dashGap: 1,
+        dashInitialGap: 0,
+        altitude: 0.1,
+        stroke: 0.5,
+        animationTime: distance * SPEED / 1000,
+      };
+    }),
+    [connections, currentRegion]
   );
 
   useEffect(() => {
@@ -328,14 +301,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         arcStroke={'stroke'}
         arcDashLength={'dashLength'}
         arcDashGap={'dashGap'}
-        arcDashAnimateTime={d => {
-          const arc = activeArcs[d.id];
-          if (!arc) return 0;
-          
-          const elapsed = Date.now() - arc.animationStartTime;
-          const remaining = Math.max(0, arc.animationDuration - elapsed);
-          return remaining;
-        }}
+        arcDashAnimateTime={d => d.animationTime}
         arcCurveType="great-circle"
         arcCurveResolution={64}
         
