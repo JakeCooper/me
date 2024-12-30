@@ -452,6 +452,15 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             if (data.connectedUsers) {
               setConnectedUsers(data.connectedUsers);
             }
+            if (data.disconnectedUser) {
+              // Remove the disconnected user's connection
+              setConnections(prev => 
+                prev.filter(conn => 
+                  !(conn.from.lat === data.disconnectedUser.from.lat && 
+                    conn.from.lng === data.disconnectedUser.from.lng)
+                )
+              );
+            }
             if (data.connections && Array.isArray(data.connections)) {
               console.log('Setting initial connections to:', data.connections);
               setConnections(data.connections);

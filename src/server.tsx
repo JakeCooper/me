@@ -311,15 +311,19 @@ const server = Bun.serve({
     },
     
     async close(ws) {
+      // Get the user's connection before removing them
+      const user = connectedUsers.get(ws);
+      
       // Remove user when they disconnect
       connectedUsers.delete(ws);
       clients.delete(ws);
       
-      // Broadcast updated user list to all clients in parallel
+      // Broadcast updated user list and connection removal to all clients in parallel
       const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
       const update = {
         type: "userUpdate",
-        connectedUsers: connectedLocations
+        connectedUsers: connectedLocations,
+        disconnectedUser: user?.connection // Include the connection to be removed
       };
       
       const wsMessage = JSON.stringify(update);
