@@ -300,12 +300,14 @@ const server = Bun.serve({
       const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
       const existingConnections = Array.from(connectedUsers.values()).map(u => u.connection);
       
-      await ws.send(JSON.stringify({ 
+      const initialState = { 
         type: "state", 
         regions,
         connectedUsers: connectedLocations,
-        connections: existingConnections  // Send all existing connections
-      }));
+        connections: existingConnections
+      };
+      console.log('Sending initial state to new client:', initialState);
+      await ws.send(JSON.stringify(initialState));
     },
     
     async close(ws) {
