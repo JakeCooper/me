@@ -153,11 +153,9 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     [],
   );
 
-  const arcsRef = useRef([]);
-
-  // Setup arcs data with stable reference
-  const arcData = useMemo(() => {
-    const newArcs = connections.map(conn => {
+  // Setup arcs data
+  const arcData = useMemo(() => 
+    connections.map(conn => {
       // Calculate distance between points using the Haversine formula
       const R = 6371; // Earth's radius in km
       const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
@@ -168,9 +166,12 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
-
+    
+      // Base speed in milliseconds per 1000km
+      const SPEED = 4000; // Adjust this value to make animation faster/slower
+      
       return {
-        id: conn.id,
+        id: conn.id, // Add ID here
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
@@ -181,20 +182,11 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         dashInitialGap: 0,
         altitude: 0.1,
         stroke: 0.5,
-        animationTime: distance * 4 // Constant animation time
+        animationTime: distance * SPEED / 1000,
       };
-    });
-
-    // Only update ref if we have changes that matter
-    const hasChanges = newArcs.length !== arcsRef.current.length ||
-      newArcs.some((arc, i) => arc.id !== arcsRef.current[i]?.id);
-      
-    if (hasChanges) {
-      arcsRef.current = newArcs;
-    }
-
-    return arcsRef.current;
-  }, [connections, currentRegion]);
+    }),
+    [connections, currentRegion]
+  );
 
   useEffect(() => {
     if (globeEl.current) {
@@ -414,7 +406,6 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   }, [currentRegion]);
 
   const [connectedUsers, setConnectedUsers] = React.useState<Array<{ lat: number; lng: number }>>([]);
-  const connectionsRef = useRef<Connection[]>([]);
 
   useEffect(() => {
     let reconnectTimer: number;
@@ -459,9 +450,12 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               setConnectedUsers(data.connectedUsers);
             }
             if (data.connections && Array.isArray(data.connections)) {
-              // Update ref directly to avoid re-renders
-              connectionsRef.current = data.connections;
-              setConnections(data.connections);
+              // Instead of replacing, merge with existing while preserving animation state
+              setConnections(prev => {
+                const existingIds = new Set(prev.map(c => c.id));
+                const newConnections = data.connections.filter(c => !existingIds.has(c.id));
+                return [...prev, ...newConnections];
+              });
             }
           }
           
@@ -470,22 +464,21 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               setConnectedUsers(data.connectedUsers);
             }
             if (data.disconnectedUser?.connection) {
-              // Update ref first
-              connectionsRef.current = connectionsRef.current.filter(
-                conn => conn.id !== data.disconnectedUser.connection.id
+              // Keep the animation state for all other connections
+              setConnections(prev => 
+                prev.filter(conn => conn.id !== data.disconnectedUser.connection.id)
               );
-              // Then update state
-              setConnections(connectionsRef.current);
             }
           }
           
           if (data.type === "update" && data.connection) {
-            // Update ref first
-            if (!connectionsRef.current.some(conn => conn.id === data.connection.id)) {
-              connectionsRef.current = [...connectionsRef.current, data.connection];
-              // Then update state
-              setConnections(connectionsRef.current);
-            }
+            // Only add if not already present
+            setConnections(prev => {
+              if (prev.some(conn => conn.id === data.connection.id)) {
+                return prev;
+              }
+              return [...prev, data.connection];
+            });
           }
         };
   
