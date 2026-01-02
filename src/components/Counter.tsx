@@ -25,6 +25,11 @@ interface Connection {
   };
 }
 
+interface CounterProps {
+  regions: RegionData[];
+  currentRegion: string;
+}
+
 interface GlobeVizProps {
   regions: RegionData[];
   currentRegion: string;
@@ -92,11 +97,60 @@ const DATACENTER_LOCATIONS = {
   'asia-southeast1': [1.3521, 103.8198] // Singapore
 };
 
+// Consolidated region mapping
+const REGION_CONSOLIDATION = {
+  'us-west1': 'US West',
+  'us-west2': 'US West', // Metal Oregon
+  'us-east1': 'US East',
+  'us-east4': 'US East',
+  'us-east4-eqdc4a': 'US East', // Metal Virginia
+  'europe': 'Europe',
+  'europe-west4': 'Europe',
+  'europe-west4-drams3a': 'Europe', // Metal Netherlands
+  'asia': 'Asia',
+  'asia-southeast1': 'Asia',
+  'asia-southeast1-eqsg3a': 'Asia' // Metal Singapore
+};
+
+// Consolidated datacenter locations (using the primary location for each region)
+const CONSOLIDATED_DATACENTER_LOCATIONS = {
+  'US West': [45.5945, -122.1562],    // Oregon
+  'US East': [38.7223, -77.0196],     // Virginia  
+  'Europe': [53.4478, 6.8367],        // Netherlands
+  'Asia': [1.3521, 103.8198]          // Singapore
+};
+
 if (typeof window !== 'undefined') {
   // Pre-import the module to reduce flash
   const globe = require('react-globe.gl').default;
   ReactGlobe = globe;
 }
+
+// Function to consolidate regions data
+const consolidateRegions = (regions: RegionData[]): RegionData[] => {
+  const consolidated = new Map<string, RegionData>();
+  
+  regions.forEach(region => {
+    const consolidatedName = REGION_CONSOLIDATION[region.region] || region.region;
+    
+    if (consolidated.has(consolidatedName)) {
+      const existing = consolidated.get(consolidatedName)!;
+      consolidated.set(consolidatedName, {
+        region: consolidatedName,
+        count: existing.count + region.count,
+        lastUpdate: region.lastUpdate > existing.lastUpdate ? region.lastUpdate : existing.lastUpdate
+      });
+    } else {
+      consolidated.set(consolidatedName, {
+        region: consolidatedName,
+        count: region.count,
+        lastUpdate: region.lastUpdate
+      });
+    }
+  });
+  
+  return Array.from(consolidated.values());
+};
 
 const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
@@ -114,21 +168,25 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     setMounted(true);
   }, []);
 
-  // Setup points data with labels
+  // Consolidate regions and get current consolidated region
+  const consolidatedRegions = useMemo(() => consolidateRegions(regions), [regions]);
+  const currentConsolidatedRegion = REGION_CONSOLIDATION[currentRegion] || currentRegion;
+
+  // Setup points data with labels using consolidated regions
   const datacenterPoints = useMemo(() => 
-    Object.entries(DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
-      const regionData = regions.find(r => r.region === region);
+    Object.entries(CONSOLIDATED_DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
+      const regionData = consolidatedRegions.find(r => r.region === region);
       return {
         lat,
         lng,
-        size: region === currentRegion ? 1.5 : 1,
-        color: region === currentRegion ? '#5CC5B9' : "#9241D3",
+        size: region === currentConsolidatedRegion ? 1.5 : 1,
+        color: region === currentConsolidatedRegion ? '#5CC5B9' : "#9241D3",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
       };
     }),
-    [regions, currentRegion]
+    [consolidatedRegions, currentConsolidatedRegion]
   );
 
   const userPoints = useMemo(() => [
@@ -153,7 +211,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     [],
   );
 
-  // Setup arcs data
+  // Setup arcs data with consolidated region logic
   const arcData = useMemo(() => 
     connections.map(conn => {
       // Calculate distance between points using the Haversine formula
@@ -170,13 +228,16 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
       // Base speed in milliseconds per 1000km
       const SPEED = 3000; // Adjust this value to make animation faster/slower
       
+      // Get consolidated region for comparison
+      const connectionConsolidatedRegion = REGION_CONSOLIDATION[conn.to.region] || conn.to.region;
+      
       return {
         id: conn.id, // Add ID here
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
         endLng: conn.to.lng,
-        color: conn.to.region === currentRegion ? "#5CC5B9" : "#9241D3",
+        color: connectionConsolidatedRegion === currentConsolidatedRegion ? "#5CC5B9" : "#9241D3",
         dashLength: 0.1,
         dashGap: 1,
         dashInitialGap: 0,
@@ -185,7 +246,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         animationTime: distance * SPEED / 1000,
       };
     }),
-    [connections, currentRegion]
+    [connections, currentConsolidatedRegion]
   );
 
   useEffect(() => {
@@ -355,6 +416,9 @@ const getCachedLocation = (): CachedLocation | null => {
 };
 
 const IP_URL = process.env.NODE_ENV == "production" ? 'https://ipwho.is/' : 'http://ipwho.is/';
+
+// Default location fallback
+const DEFAULT_LOCATION = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
@@ -600,7 +664,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.5'
         }}>
           It's served via IP address 66.33.22.11, by ASN 400940, and runs 
-          in {regions.length} different locations, across 3 different countries, 
+          in {consolidateRegions(regions).length} different regions, across 3 different countries, 
           on servers we own.
         </p>
         
@@ -614,7 +678,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
 
         <div>
           <div style={{ marginBottom: '0.5rem' }}>
-            Your Region ({currentRegion}): {localRegions.find(r => r.region === currentRegion)?.count ?? 0}
+            Your Region ({REGION_CONSOLIDATION[currentRegion] || currentRegion}): {consolidateRegions(localRegions).find(r => r.region === (REGION_CONSOLIDATION[currentRegion] || currentRegion))?.count ?? 0}
           </div>
           <button
             onClick={incrementCounter}
