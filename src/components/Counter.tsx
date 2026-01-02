@@ -657,7 +657,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           >
             Railway.com
           </a>
-          , an infrastructure startup. We're remote, employing {teamCount}+ around the world, 
+          , an infrastructure startup. We're remote, employing {teamCount} people around the world, 
           from California to Japan and everywhere in between.
         </p>
         
