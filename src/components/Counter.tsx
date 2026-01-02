@@ -3,6 +3,7 @@ import { Color } from "three";
 import * as THREE from 'three';
 import { countries } from "./countries";
 import { applyDeviceOffset } from "./fingerprint";
+import { getRailwayTeamCount } from "../utils/railway-team";
 
 interface RegionData {
   region: string;
@@ -426,6 +427,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [teamCount, setTeamCount] = React.useState(25);
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
@@ -471,6 +473,11 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   }, [currentRegion]);
 
   const [connectedUsers, setConnectedUsers] = React.useState<Array<{ lat: number; lng: number }>>([]);
+
+  // Fetch team count on mount
+  useEffect(() => {
+    getRailwayTeamCount().then(setTeamCount);
+  }, []);
 
   useEffect(() => {
     let reconnectTimer: number;
@@ -650,7 +657,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           >
             Railway.com
           </a>
-          , an infrastructure startup. We're remote, employing 25+ around the world, 
+          , an infrastructure startup. We're remote, employing {teamCount}+ around the world, 
           from California to Japan and everywhere in between.
         </p>
         
