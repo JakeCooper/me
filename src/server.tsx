@@ -29,9 +29,13 @@ const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
 // Region to Redis URL mapping
 const REDIS_MAPPING = {
   'us-west1': process.env.REDIS_WEST_URL,
+  'us-west2': process.env.REDIS_WEST_URL,  // Metal Oregon -> West Redis
   'us-east4': process.env.REDIS_EAST_URL,
+  'us-east4-eqdc4a': process.env.REDIS_EAST_URL,  // Metal Virginia -> East Redis
   'asia-southeast1': process.env.REDIS_ASIA_URL,
-  'europe-west4': process.env.REDIS_EUROPE_URL
+  'asia-southeast1-eqsg3a': process.env.REDIS_ASIA_URL,  // Metal Singapore -> Asia Redis
+  'europe-west4': process.env.REDIS_EUROPE_URL,
+  'europe-west4-drams3a': process.env.REDIS_EUROPE_URL  // Metal Netherlands -> Europe Redis
 };
 
 // Client bundle cache
