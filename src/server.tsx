@@ -19,7 +19,11 @@ const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
   'us-west1': [45.5945, -122.1562],    // Oregon
   'us-east4': [38.7223, -77.0196],     // Virginia
   'europe-west4': [53.4478, 6.8367],   // Netherlands
-  'asia-southeast1': [1.3521, 103.8198] // Singapore
+  'asia-southeast1': [1.3521, 103.8198], // Singapore
+  'us-west2': [45.5945, -122.1562],    // Oregon (metal)
+  'us-east4-eqdc4a': [38.7223, -77.0196], // Virginia (metal)
+  'europe-west4-drams3a': [53.4478, 6.8367], // Netherlands (metal)
+  'asia-southeast1-eqsg3a': [1.3521, 103.8198] // Singapore (metal)
 };
 
 // Region to Redis URL mapping
