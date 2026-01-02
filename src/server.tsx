@@ -416,7 +416,29 @@ const server = Bun.serve({
           ]);
         }
         
-        // Keep rest of message handler...
+        if (data.type === "increment" && data.location) {
+          // Increment counter when user clicks the button
+          const newValue = await incrementCounter();
+          const updateMessage = {
+            type: "update",
+            region: REGION,
+            count: newValue,
+            lastUpdate: new Date().toISOString()
+          };
+          
+          // Broadcast to all clients and Redis
+          const messageStr = JSON.stringify(updateMessage);
+          await Promise.all([
+            // Send to WebSocket clients
+            ...Array.from(clients).map(client => 
+              client.send(messageStr)
+            ),
+            // Broadcast to Redis
+            ...Array.from(redisClients.values()).map(client => 
+              client.publish('counter-updates', messageStr)
+            )
+          ]);
+        }
       } catch (error) {
         console.error("Error processing message:", error);
       }
