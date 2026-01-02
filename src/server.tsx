@@ -26,6 +26,33 @@ const DATACENTER_LOCATIONS: Record<string, [number, number]> = {
   'asia-southeast1-eqsg3a': [1.3521, 103.8198] // Singapore (metal)
 };
 
+// Consolidated region mapping for connections
+const REGION_CONSOLIDATION = {
+  'us-west1': 'US West',
+  'us-west2': 'US West', // Metal Oregon
+  'us-east1': 'US East',
+  'us-east4': 'US East',
+  'us-east4-eqdc4a': 'US East', // Metal Virginia
+  'europe': 'Europe',
+  'europe-west4': 'Europe',
+  'europe-west4-drams3a': 'Europe', // Metal Netherlands
+  'asia': 'Asia',
+  'asia-southeast1': 'Asia',
+  'asia-southeast1-eqsg3a': 'Asia' // Metal Singapore
+};
+
+// Get consolidated datacenter location for connection display
+const getConsolidatedLocation = (region: string): [number, number] => {
+  const consolidated = REGION_CONSOLIDATION[region] || region;
+  switch (consolidated) {
+    case 'US West': return [45.5945, -122.1562];    // Oregon
+    case 'US East': return [38.7223, -77.0196];     // Virginia
+    case 'Europe': return [53.4478, 6.8367];        // Netherlands
+    case 'Asia': return [1.3521, 103.8198];         // Singapore
+    default: return DATACENTER_LOCATIONS[region] || [0, 0];
+  }
+};
+
 // Region to Redis URL mapping
 const REDIS_MAPPING = {
   'us-west1': process.env.REDIS_WEST_URL,
@@ -351,7 +378,8 @@ const server = Bun.serve({
         const data = JSON.parse(message.toString());
         
         if (data.type === "connected" && data.location) {
-          // Create connection data
+          // Create connection data using consolidated location for display
+          const consolidatedLocation = getConsolidatedLocation(REGION);
           const connection: Connection = {
             id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,  // Unique ID
             from: {
@@ -362,8 +390,8 @@ const server = Bun.serve({
             },
             to: {
               region: REGION,
-              lat: DATACENTER_LOCATIONS[REGION][0],
-              lng: DATACENTER_LOCATIONS[REGION][1]
+              lat: consolidatedLocation[0],
+              lng: consolidatedLocation[1]
             }
           };
           
