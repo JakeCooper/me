@@ -387,6 +387,44 @@ const server = Bun.serve({
                 text-decoration: underline;
               }
 
+              /* Main layout - desktop default */
+              .main-layout {
+                display: grid;
+                grid-template-columns: 500px 1fr;
+                min-height: 100vh;
+                background: #13111C;
+                color: #ffffff;
+                margin: 0;
+                padding: 0;
+                width: 100vw;
+                position: absolute;
+                left: 0;
+                top: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+
+              .content-column {
+                padding: 3rem;
+                height: 100vh;
+                overflow-y: auto;
+                background: #13111C;
+                border-right: 1px solid rgba(123, 12, 208, 0.2);
+              }
+
+              .pull-tab {
+                display: none;
+              }
+
+              .globe-column {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #13111C;
+                overflow: hidden;
+                position: relative;
+                padding-bottom: 80px;
+              }
+
               @keyframes pulse-glow {
                 0%, 100% {
                   box-shadow: 0 0 20px rgba(123, 12, 208, 0.3), 0 0 40px rgba(232, 53, 160, 0.1);
@@ -427,29 +465,25 @@ const server = Bun.serve({
               @media (max-width: 900px) {
                 .main-layout {
                   grid-template-columns: 1fr;
-                  grid-template-rows: auto 1fr;
+                  grid-template-rows: auto auto 1fr;
+                  min-height: 100dvh;
                   height: 100dvh;
-                  overflow: hidden;
                 }
                 .content-column {
                   height: auto;
-                  max-height: 45dvh;
-                  overflow-y: auto;
+                  max-height: 0;
+                  overflow: hidden;
                   border-right: none;
-                  padding: 1.5rem;
-                  padding-bottom: 0.5rem;
-                  position: relative;
+                  border-bottom: none;
+                  padding: 0 1.5rem;
+                  transition: max-height 0.3s ease, padding 0.3s ease;
                 }
-                .content-column::after {
-                  content: '';
-                  display: block;
-                  width: 40px;
-                  height: 4px;
-                  background: rgba(123, 12, 208, 0.4);
-                  border-radius: 2px;
-                  margin: 0.75rem auto 0;
-                  position: sticky;
-                  bottom: 0;
+                .content-column.expanded {
+                  max-height: 60dvh;
+                  padding: 1.5rem;
+                  padding-bottom: 0;
+                  overflow-y: scroll;
+                  -webkit-overflow-scrolling: touch;
                 }
                 .content-column h1 {
                   font-size: 1.75rem;
@@ -459,9 +493,39 @@ const server = Bun.serve({
                   font-size: 0.875rem;
                   margin-bottom: 0.75rem;
                 }
+                .pull-tab {
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 100%;
+                  padding: 8px 0;
+                  background: #13111C;
+                  border: none;
+                  cursor: pointer;
+                }
+                .pull-tab::after {
+                  content: '';
+                  display: block;
+                  width: 12px;
+                  height: 12px;
+                  border-right: 2px solid rgba(123, 12, 208, 0.8);
+                  border-bottom: 2px solid rgba(123, 12, 208, 0.8);
+                  transform: rotate(45deg);
+                  filter: drop-shadow(0 0 6px rgba(123, 12, 208, 0.6));
+                  transition: all 0.3s ease;
+                }
+                .main-layout:has(.content-column.expanded) .pull-tab::after {
+                  transform: rotate(-135deg);
+                }
+                .pull-tab:hover::after,
+                .pull-tab:active::after {
+                  border-color: rgba(232, 53, 160, 0.9);
+                  filter: drop-shadow(0 0 10px rgba(232, 53, 160, 0.8));
+                }
                 .globe-column {
                   flex: 1;
                   min-height: 0;
+                  padding-bottom: 100px;
                 }
                 /* Mobile: bottom bar centered */
                 .floating-bar {
