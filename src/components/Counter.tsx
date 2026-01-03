@@ -706,12 +706,14 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           Every request to this website can be seen in real-time below. Click the button below to trigger one manually.
         </p>
 
-        <div style={{
-          padding: '1.5rem',
-          background: 'rgba(123, 12, 208, 0.1)',
-          borderRadius: '8px',
-          border: '1px solid rgba(123, 12, 208, 0.2)'
-        }}>
+        <div
+          className="increment-section"
+          style={{
+            padding: '1.5rem',
+            background: 'rgba(123, 12, 208, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(123, 12, 208, 0.2)'
+          }}>
           <div style={{
             marginBottom: '1rem',
             fontSize: '0.875rem',
@@ -761,15 +763,44 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           overflow: 'hidden',
           position: 'relative'
         }}>
-        <GlobeViz 
-          regions={localRegions} 
-          currentRegion={currentRegion} 
-          connections={connections} 
+        <GlobeViz
+          regions={localRegions}
+          currentRegion={currentRegion}
+          connections={connections}
           userLocation={userLocation}
           connectedUsers={connectedUsers}
           width={1000}
           height={1000}
         />
+      </div>
+
+      {/* Mobile floating bar */}
+      <div className="mobile-floating-bar">
+        <div style={{
+          fontSize: '0.875rem',
+          color: 'rgba(255, 255, 255, 0.7)'
+        }}>
+          {REGION_CONSOLIDATION[currentRegion] || currentRegion}: <span style={{ color: '#E835A0', fontWeight: 600 }}>{consolidateRegions(localRegions).find(r => r.region === (REGION_CONSOLIDATION[currentRegion] || currentRegion))?.count ?? 0}</span>
+        </div>
+        <button
+          onClick={incrementCounter}
+          disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
+          style={{
+            background: '#7b0cd0',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '6px',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            opacity: (!ws || ws.readyState !== WebSocket.OPEN || !userLocation) ? 0.5 : 1,
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Increment
+        </button>
       </div>
     </div>
   );
