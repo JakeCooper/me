@@ -429,15 +429,15 @@ const server = Bun.serve({
                   grid-template-columns: 1fr;
                   grid-template-rows: auto 1fr;
                   height: 100dvh;
-                  overflow: hidden;
                 }
                 .content-column {
                   height: auto;
-                  max-height: 45dvh;
-                  overflow-y: auto;
+                  max-height: 50dvh;
+                  overflow-y: scroll;
+                  -webkit-overflow-scrolling: touch;
                   border-right: none;
                   padding: 1.5rem;
-                  padding-bottom: 0.5rem;
+                  padding-bottom: 1rem;
                   position: relative;
                 }
                 .content-column::after {
