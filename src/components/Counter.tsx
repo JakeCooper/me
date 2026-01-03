@@ -36,6 +36,7 @@ interface GlobeVizProps {
   currentRegion: string;
   connections: Connection[];
   shootingStars: ShootingStar[];
+  animatingConnections: AnimatingConnection[];
   userLocation: { lat: number; lng: number } | null;
   connectedUsers: Array<{ lat: number; lng: number }>;
   width?: number;
@@ -49,6 +50,17 @@ interface ShootingStar {
   endLat: number;
   endLng: number;
   color: string;
+  animationDuration: number;
+}
+
+interface AnimatingConnection {
+  id: string;
+  startLat: number;
+  startLng: number;
+  endLat: number;
+  endLng: number;
+  color: string;
+  animationDuration: number;
 }
 
 interface GlobeStyles {
@@ -163,7 +175,7 @@ const consolidateRegions = (regions: RegionData[]): RegionData[] => {
   return Array.from(consolidated.values());
 };
 
-const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
+const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = [], animatingConnections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -222,32 +234,60 @@ const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = []
     [],
   );
 
-  // Persistent connection arcs (solid lines)
-  const persistentArcs = useMemo(() =>
-    connections.map(conn => {
-      const connectionConsolidatedRegion = REGION_CONSOLIDATION[conn.to.region] || conn.to.region;
-
-      return {
-        id: conn.id,
-        startLat: conn.from.lat,
-        startLng: conn.from.lng,
-        endLat: conn.to.lat,
-        endLng: conn.to.lng,
-        color: connectionConsolidatedRegion === currentConsolidatedRegion
-          ? 'rgba(232, 53, 160, 0.6)'
-          : 'rgba(123, 12, 208, 0.5)',
-        altitude: 0.08,
-        stroke: 1.5,
-        // Solid line - no animation
-        dashLength: 1,
-        dashGap: 0,
-        dashAnimateTime: 0,
-      };
-    }),
-    [connections, currentConsolidatedRegion]
+  // Get set of currently animating connection IDs
+  const animatingIds = useMemo(() =>
+    new Set(animatingConnections.map(c => c.id)),
+    [animatingConnections]
   );
 
-  // Shooting star arcs (animated)
+  // Persistent connection arcs (dotted, slowly animated)
+  // Exclude connections that are currently animating
+  const persistentArcs = useMemo(() =>
+    connections
+      .filter(conn => !animatingIds.has(conn.id))
+      .map(conn => {
+        const connectionConsolidatedRegion = REGION_CONSOLIDATION[conn.to.region] || conn.to.region;
+
+        return {
+          id: conn.id,
+          startLat: conn.from.lat,
+          startLng: conn.from.lng,
+          endLat: conn.to.lat,
+          endLng: conn.to.lng,
+          color: connectionConsolidatedRegion === currentConsolidatedRegion
+            ? 'rgba(232, 53, 160, 0.6)'
+            : 'rgba(123, 12, 208, 0.5)',
+          altitude: 0.08,
+          stroke: 0.8,
+          // Dotted line with slow animation
+          dashLength: 0.1,
+          dashGap: 0.05,
+          dashAnimateTime: 8000, // Slow moving dots
+        };
+      }),
+    [connections, currentConsolidatedRegion, animatingIds]
+  );
+
+  // Animating connection arcs (tracer drawing in)
+  const animatingArcs = useMemo(() =>
+    animatingConnections.map(conn => ({
+      id: `animating-${conn.id}`,
+      startLat: conn.startLat,
+      startLng: conn.startLng,
+      endLat: conn.endLat,
+      endLng: conn.endLng,
+      color: conn.color,
+      altitude: 0.1,
+      stroke: 1.2,
+      // Single tracer segment that draws the line
+      dashLength: 0.15,
+      dashGap: 0.85,
+      dashAnimateTime: conn.animationDuration,
+    })),
+    [animatingConnections]
+  );
+
+  // Shooting star arcs (animated on increment)
   const shootingStarArcs = useMemo(() =>
     shootingStars.map(star => ({
       id: star.id,
@@ -255,20 +295,20 @@ const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = []
       startLng: star.startLng,
       endLat: star.endLat,
       endLng: star.endLng,
-      color: star.color,
-      altitude: 0.12,
-      stroke: 2.5,
-      dashLength: 0.3,
-      dashGap: 0.7,
-      dashAnimateTime: 1500, // Fast animation
+      color: '#FFD700', // Golden yellow
+      altitude: 0.25, // Higher arc
+      stroke: 0.8, // Smaller/thinner
+      dashLength: 0.08, // Small bright head
+      dashGap: 0.92, // Long tail
+      dashAnimateTime: star.animationDuration, // Based on arc distance
     })),
     [shootingStars]
   );
 
   // Combine all arcs
   const arcData = useMemo(() =>
-    [...persistentArcs, ...shootingStarArcs],
-    [persistentArcs, shootingStarArcs]
+    [...persistentArcs, ...animatingArcs, ...shootingStarArcs],
+    [persistentArcs, animatingArcs, shootingStarArcs]
   );
 
   useEffect(() => {
@@ -442,16 +482,69 @@ const IP_URL = process.env.NODE_ENV == "production" ? 'https://ipwho.is/' : 'htt
 // Default location fallback
 const DEFAULT_LOCATION = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 
+// Calculate great-circle distance in degrees (0-180)
+const getArcDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return c * 180 / Math.PI; // Return degrees
+};
+
+// Calculate animation duration based on arc distance and altitude
+const getAnimationDuration = (lat1: number, lng1: number, lat2: number, lng2: number, altitude: number = 0.1): number => {
+  const distance = getArcDistance(lat1, lng1, lat2, lng2);
+  // Higher arcs travel longer paths - approximate with altitude multiplier
+  const arcLengthMultiplier = 1 + (altitude * 2);
+  const effectiveDistance = distance * arcLengthMultiplier;
+  const velocity = 10; // degrees per second
+  const baseDuration = (effectiveDistance / velocity) * 1000;
+  return baseDuration;
+};
+
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [shootingStars, setShootingStars] = React.useState<ShootingStar[]>([]);
+  const [animatingConnections, setAnimatingConnections] = React.useState<AnimatingConnection[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
   const [teamCount, setTeamCount] = React.useState(25);
   const [contentExpanded, setContentExpanded] = React.useState(false);
   const initialConnection = React.useRef(true);
+
+  // Helper to animate a connection drawing in
+  const animateConnection = React.useCallback((conn: Connection) => {
+    const altitude = 0.1; // matches animatingArcs altitude
+    const duration = getAnimationDuration(
+      conn.from.lat,
+      conn.from.lng,
+      conn.to.lat,
+      conn.to.lng,
+      altitude
+    );
+
+    const animating: AnimatingConnection = {
+      id: conn.id,
+      startLat: conn.from.lat,
+      startLng: conn.from.lng,
+      endLat: conn.to.lat,
+      endLng: conn.to.lng,
+      color: '#E835A0',
+      animationDuration: duration,
+    };
+
+    setAnimatingConnections(prev => [...prev, animating]);
+
+    // Remove after animation + time for tracer to fully land
+    const landingBuffer = duration * 0.08;
+    setTimeout(() => {
+      setAnimatingConnections(prev => prev.filter(c => c.id !== conn.id));
+    }, duration + landingBuffer);
+  }, []);
 
   useEffect(() => {
     // First try cache
@@ -549,29 +642,33 @@ export function Counter({ regions, currentRegion }: CounterProps) {
               setConnections(prev => {
                 const existingIds = new Set(prev.map(c => c.id));
                 const newConnections = data.connections.filter(c => !existingIds.has(c.id));
+                // Animate each new connection
+                newConnections.forEach(conn => animateConnection(conn));
                 return [...prev, ...newConnections];
               });
             }
           }
-          
+
           if (data.type === "userUpdate") {
             if (data.connectedUsers) {
               setConnectedUsers(data.connectedUsers);
             }
             if (data.disconnectedUser?.connection) {
               // Keep the animation state for all other connections
-              setConnections(prev => 
+              setConnections(prev =>
                 prev.filter(conn => conn.id !== data.disconnectedUser.connection.id)
               );
             }
           }
-          
+
           if (data.type === "update" && data.connection) {
             // Only add if not already present
             setConnections(prev => {
               if (prev.some(conn => conn.id === data.connection.id)) {
                 return prev;
               }
+              // Animate the new connection
+              animateConnection(data.connection);
               return [...prev, data.connection];
             });
           }
@@ -639,6 +736,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       );
 
       if (userConnection) {
+        // Calculate animation duration based on arc distance and altitude
+        const altitude = 0.25; // matches shootingStarArcs altitude
+        const duration = getAnimationDuration(
+          userConnection.from.lat,
+          userConnection.from.lng,
+          userConnection.to.lat,
+          userConnection.to.lng,
+          altitude
+        );
+
+        // Send a shooting star along the connection line
         const starId = `star-${Date.now()}`;
         const newStar: ShootingStar = {
           id: starId,
@@ -646,15 +754,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           startLng: userConnection.from.lng,
           endLat: userConnection.to.lat,
           endLng: userConnection.to.lng,
-          color: '#E835A0'
+          color: '#FFD700',
+          animationDuration: duration
         };
 
         setShootingStars(prev => [...prev, newStar]);
 
-        // Remove shooting star after animation completes
+        // Remove after animation + time for star to fully land
+        const landingBuffer = duration * 0.04;
         setTimeout(() => {
           setShootingStars(prev => prev.filter(s => s.id !== starId));
-        }, 2000);
+        }, duration + landingBuffer);
       }
     }
   };
@@ -791,6 +901,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           currentRegion={currentRegion}
           connections={connections}
           shootingStars={shootingStars}
+          animatingConnections={animatingConnections}
           userLocation={userLocation}
           connectedUsers={connectedUsers}
           width={1000}
