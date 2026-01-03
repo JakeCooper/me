@@ -617,7 +617,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       className="main-layout"
       style={{
         display: 'grid',
-        gridTemplateColumns: '500px 1fr',
+        gridTemplateColumns: '1fr',
+        gridTemplateRows: 'auto 1fr auto',
         minHeight: '100vh',
         background: '#13111C',
         color: '#ffffff',
@@ -629,15 +630,13 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         top: 0,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       }}>
-      {/* Left Column - Content */}
+      {/* Top Section - Content */}
       <div
         className="content-column"
         style={{
-          padding: '3rem',
-          height: '100vh',
-          overflowY: 'auto',
+          padding: '2rem 3rem',
           background: '#13111C',
-          borderRight: '1px solid rgba(123, 12, 208, 0.2)'
+          borderBottom: '1px solid rgba(123, 12, 208, 0.2)'
         }}>
         <h1 style={{
           fontSize: '2.5rem',
@@ -703,7 +702,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.6',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          Every request to this website can be seen in real-time below. Click the button below to trigger one manually.
+          Every request to this website can be seen in real-time on the globe. Click the button below the globe to trigger one manually.
         </p>
 
         <div

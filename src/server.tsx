@@ -389,22 +389,10 @@ const server = Bun.serve({
 
               /* Mobile responsive layout */
               @media (max-width: 900px) {
-                .main-layout {
-                  grid-template-columns: 1fr !important;
-                  grid-template-rows: auto 1fr auto !important;
-                  height: 100vh !important;
-                  height: 100dvh !important;
-                  min-height: 100vh !important;
-                  min-height: 100dvh !important;
-                  overflow: hidden !important;
-                }
                 .content-column {
-                  height: auto !important;
                   max-height: 45vh !important;
                   max-height: 45dvh !important;
                   overflow-y: auto !important;
-                  border-right: none !important;
-                  border-bottom: none !important;
                   padding: 1.5rem !important;
                   padding-bottom: 0.5rem !important;
                   position: relative !important;
@@ -428,21 +416,17 @@ const server = Bun.serve({
                   font-size: 0.875rem !important;
                   margin-bottom: 0.75rem !important;
                 }
-                .increment-section {
-                  display: none !important;
-                }
-                .globe-column {
-                  flex: 1 !important;
-                  min-height: 0 !important;
-                  height: auto !important;
-                }
                 .mobile-floating-bar {
-                  display: flex !important;
+                  padding: 1rem 1.5rem !important;
                 }
               }
 
-              .mobile-floating-bar {
+              .increment-section {
                 display: none;
+              }
+
+              .mobile-floating-bar {
+                display: flex;
                 position: fixed;
                 bottom: 0;
                 left: 0;
@@ -451,11 +435,11 @@ const server = Bun.serve({
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
                 border-top: 1px solid rgba(123, 12, 208, 0.3);
-                padding: 1rem 1.5rem;
+                padding: 1rem 2rem;
                 padding-bottom: calc(1rem + env(safe-area-inset-bottom));
                 align-items: center;
-                justify-content: space-between;
-                gap: 1rem;
+                justify-content: center;
+                gap: 2rem;
                 z-index: 100;
               }
             </style>
