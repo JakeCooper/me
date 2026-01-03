@@ -898,7 +898,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.6',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          Every request to this website can be seen in real-time on the globe.
+          All current website visitors are visible in real-time on the globe.
         </p>
 
         <div
