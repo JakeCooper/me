@@ -35,10 +35,20 @@ interface GlobeVizProps {
   regions: RegionData[];
   currentRegion: string;
   connections: Connection[];
+  shootingStars: ShootingStar[];
   userLocation: { lat: number; lng: number } | null;
   connectedUsers: Array<{ lat: number; lng: number }>;
   width?: number;
   height?: number;
+}
+
+interface ShootingStar {
+  id: string;
+  startLat: number;
+  startLng: number;
+  endLat: number;
+  endLng: number;
+  color: string;
 }
 
 interface GlobeStyles {
@@ -153,7 +163,7 @@ const consolidateRegions = (regions: RegionData[]): RegionData[] => {
   return Array.from(consolidated.values());
 };
 
-const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
+const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = [], userLocation, connectedUsers = [] }: GlobeVizProps) => {
   const globeEl = useRef<any>();
   const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -212,42 +222,53 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     [],
   );
 
-  // Setup arcs data with consolidated region logic
-  const arcData = useMemo(() => 
+  // Persistent connection arcs (solid lines)
+  const persistentArcs = useMemo(() =>
     connections.map(conn => {
-      // Calculate distance between points using the Haversine formula
-      const R = 6371; // Earth's radius in km
-      const dLat = (conn.to.lat - conn.from.lat) * Math.PI / 180;
-      const dLon = (conn.to.lng - conn.from.lng) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(conn.from.lat * Math.PI / 180) * Math.cos(conn.to.lat * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-    
-      // Base speed in milliseconds per 1000km
-      const SPEED = 3000; // Adjust this value to make animation faster/slower
-      
-      // Get consolidated region for comparison
       const connectionConsolidatedRegion = REGION_CONSOLIDATION[conn.to.region] || conn.to.region;
-      
+
       return {
-        id: conn.id, // Add ID here
+        id: conn.id,
         startLat: conn.from.lat,
         startLng: conn.from.lng,
         endLat: conn.to.lat,
         endLng: conn.to.lng,
-        color: connectionConsolidatedRegion === currentConsolidatedRegion ? "#E835A0" : "#7b0cd0",
-        dashLength: 0.1,
-        dashGap: 1,
-        dashInitialGap: 0,
-        altitude: 0.1,
-        stroke: 0.5,
-        animationTime: distance * SPEED / 1000,
+        color: connectionConsolidatedRegion === currentConsolidatedRegion
+          ? 'rgba(232, 53, 160, 0.6)'
+          : 'rgba(123, 12, 208, 0.5)',
+        altitude: 0.08,
+        stroke: 1.5,
+        // Solid line - no animation
+        dashLength: 1,
+        dashGap: 0,
+        dashAnimateTime: 0,
       };
     }),
     [connections, currentConsolidatedRegion]
+  );
+
+  // Shooting star arcs (animated)
+  const shootingStarArcs = useMemo(() =>
+    shootingStars.map(star => ({
+      id: star.id,
+      startLat: star.startLat,
+      startLng: star.startLng,
+      endLat: star.endLat,
+      endLng: star.endLng,
+      color: star.color,
+      altitude: 0.12,
+      stroke: 2.5,
+      dashLength: 0.3,
+      dashGap: 0.7,
+      dashAnimateTime: 1500, // Fast animation
+    })),
+    [shootingStars]
+  );
+
+  // Combine all arcs
+  const arcData = useMemo(() =>
+    [...persistentArcs, ...shootingStarArcs],
+    [persistentArcs, shootingStarArcs]
   );
 
   useEffect(() => {
@@ -269,7 +290,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
     }
   }, [globeEl.current]);
 
-  const arcDashAnimateTime = d => d.animationTime;
+  const arcDashAnimateTime = d => d.dashAnimateTime || 0;
 
   return mounted ? (
     <div style={{
@@ -424,6 +445,7 @@ const DEFAULT_LOCATION = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 export function Counter({ regions, currentRegion }: CounterProps) {
   const [localRegions, setLocalRegions] = React.useState(regions);
   const [connections, setConnections] = React.useState<Connection[]>([]);
+  const [shootingStars, setShootingStars] = React.useState<ShootingStar[]>([]);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
@@ -597,19 +619,43 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const incrementCounter = () => {
     if (ws?.readyState === WebSocket.OPEN && userLocation) {
       // Send increment message to WebSocket
-      ws.send(JSON.stringify({ 
+      ws.send(JSON.stringify({
         type: "increment",
         location: userLocation
       }));
-  
+
       // Optimistically update the counter in local state
-      setLocalRegions((prevRegions) => 
-        prevRegions.map(region => 
-          region.region === currentRegion 
-            ? { ...region, count: region.count + 1 } 
+      setLocalRegions((prevRegions) =>
+        prevRegions.map(region =>
+          region.region === currentRegion
+            ? { ...region, count: region.count + 1 }
             : region
         )
       );
+
+      // Find the user's connection to create a shooting star
+      const userConnection = connections.find(conn =>
+        conn.from.lat === userLocation.lat && conn.from.lng === userLocation.lng
+      );
+
+      if (userConnection) {
+        const starId = `star-${Date.now()}`;
+        const newStar: ShootingStar = {
+          id: starId,
+          startLat: userConnection.from.lat,
+          startLng: userConnection.from.lng,
+          endLat: userConnection.to.lat,
+          endLng: userConnection.to.lng,
+          color: '#E835A0'
+        };
+
+        setShootingStars(prev => [...prev, newStar]);
+
+        // Remove shooting star after animation completes
+        setTimeout(() => {
+          setShootingStars(prev => prev.filter(s => s.id !== starId));
+        }, 2000);
+      }
     }
   };
 
@@ -744,6 +790,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           regions={localRegions}
           currentRegion={currentRegion}
           connections={connections}
+          shootingStars={shootingStars}
           userLocation={userLocation}
           connectedUsers={connectedUsers}
           width={1000}
