@@ -55,11 +55,11 @@ interface GlobeStyles {
 
 const globeStyles: Record<"light" | "dark", GlobeStyles> = {
   dark: {
-    opacity: 0.5,
-    shininess: 1.25,
+    opacity: 1,
+    shininess: 0.3,
     pointColor: "#E835A0",
     emissive: new Color("#ffffff"),
-    emissiveIntensity: 2,
+    emissiveIntensity: 0.1,
     atmosphereColor: "#1C1539",
     backgroundColor: "#13111C",
     hexPolygonColor: "rgba(22, 186, 166, 0.7)",
@@ -79,12 +79,12 @@ const globeStyles: Record<"light" | "dark", GlobeStyles> = {
 };
 
 let ReactGlobe: React.FC<any> = () => (
-  <div style={{ 
-    width: "800px", 
+  <div style={{
+    width: "800px",
     height: "800px",
     background: "#13111C",
     transition: "opacity 0.3s ease-in-out",
-    opacity: 0 
+    opacity: 0
   }} />
 );
 
@@ -174,14 +174,14 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
   const currentConsolidatedRegion = REGION_CONSOLIDATION[currentRegion] || currentRegion;
 
   // Setup points data with labels using consolidated regions
-  const datacenterPoints = useMemo(() => 
+  const datacenterPoints = useMemo(() =>
     Object.entries(CONSOLIDATED_DATACENTER_LOCATIONS).map(([region, [lat, lng]]) => {
       const regionData = consolidatedRegions.find(r => r.region === region);
       return {
         lat,
         lng,
         size: region === currentConsolidatedRegion ? 1.5 : 1,
-        color: region === currentConsolidatedRegion ? '#5CC5B9' : "#9241D3",
+        color: region === currentConsolidatedRegion ? '#E835A0' : "#7b0cd0",
         region,
         count: regionData?.count ?? 0,
         type: 'datacenter'
@@ -238,7 +238,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         startLng: conn.from.lng,
         endLat: conn.to.lat,
         endLng: conn.to.lng,
-        color: connectionConsolidatedRegion === currentConsolidatedRegion ? "#5CC5B9" : "#9241D3",
+        color: connectionConsolidatedRegion === currentConsolidatedRegion ? "#E835A0" : "#7b0cd0",
         dashLength: 0.1,
         dashGap: 1,
         dashInitialGap: 0,
@@ -272,7 +272,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
   const arcDashAnimateTime = d => d.animationTime;
 
   return mounted ? (
-    <div style={{ 
+    <div style={{
       background: '#13111C',
       transition: 'opacity 0.3s ease-in-out',
       opacity: isLoaded ? 1 : 0
@@ -384,8 +384,8 @@ const GlobeViz = ({ regions, currentRegion, connections = [], userLocation, conn
         globeMaterial={
           new THREE.MeshPhongMaterial({
             color: '#13111C',
-            transparent: true,
-            opacity: 0.95,
+            transparent: false,
+            opacity: 1,
             shininess: 0.2
           })
         }
@@ -613,100 +613,130 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div style={{ 
+    <div style={{
       display: 'grid',
       gridTemplateColumns: '500px 1fr',
       minHeight: '100vh',
       background: '#13111C',
-      color: 'white',
+      color: '#ffffff',
       margin: 0,
       padding: 0,
       width: '100vw',
       position: 'absolute',
       left: 0,
-      top: 0
+      top: 0,
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     }}>
       {/* Left Column - Content */}
-      <div style={{ 
-        padding: '2rem',
+      <div style={{
+        padding: '3rem',
         height: '100vh',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        background: '#13111C',
+        borderRight: '1px solid rgba(123, 12, 208, 0.2)'
       }}>
-        <h1 style={{ 
-          fontSize: '2.5rem', 
-          fontWeight: 'bold', 
+        <h1 style={{
+          fontSize: '2.5rem',
+          fontWeight: 600,
           marginBottom: '1.5rem',
-          marginTop: 0
+          marginTop: 0,
+          color: '#ffffff'
         }}>
           Hello
         </h1>
         
-        <p style={{ 
+        <p style={{
           marginBottom: '1rem',
           fontSize: '1rem',
-          lineHeight: '1.5'
+          lineHeight: '1.6',
+          color: 'rgba(255, 255, 255, 0.8)'
         }}>
-          My name is Jake Cooper. I'm a technologist originally from Canada.
+          My name is Jake Cooper.
+          <br />
+          I'm a technologist originally from Canada.
         </p>
-        
-        <p style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
+
+        <p style={{ marginBottom: '1rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.8)' }}>
           I currently live in San Francisco, where I run{" "}
-          <a 
+          <a
             href="https://railway.com"
-            style={{ color: '#E835A0', textDecoration: 'none' }}
+            style={{
+              color: '#E835A0',
+              textDecoration: 'none'
+            }}
           >
             Railway.com
           </a>
-          , an infrastructure startup. We're remote, employing {teamCount} people around the world, 
+          , an infrastructure startup. We're remote, employing {teamCount} people around the world,
           from California to Japan and everywhere in between.
         </p>
-        
-        <p style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
-          You can deploy anything on Railway, including this website.
-        </p>
-        
-        <p style={{ 
-          fontFamily: 'monospace',
-          marginBottom: '1rem',
-          lineHeight: '1.5'
-        }}>
-          It's served via IP address 66.33.22.11, by ASN 400940, and runs 
-          in {consolidateRegions(regions).length} different regions, across 3 different countries, 
-          on servers we own.
-        </p>
-        
-        <p style={{ 
-          fontStyle: 'italic',
-          marginBottom: '2rem',
-          lineHeight: '1.5'
-        }}>
-          All requests to this website can be seen in real-time to your right.
+
+        <p style={{ marginBottom: '1rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.8)' }}>
+          You can deploy anything on Railway.
+          <br />
+          This website included.
         </p>
 
-        <div>
-          <div style={{ marginBottom: '0.5rem' }}>
-            Your Region ({REGION_CONSOLIDATION[currentRegion] || currentRegion}): {consolidateRegions(localRegions).find(r => r.region === (REGION_CONSOLIDATION[currentRegion] || currentRegion))?.count ?? 0}
+        <p style={{
+          fontFamily: "ui-monospace, 'SF Mono', monospace",
+          marginBottom: '1rem',
+          lineHeight: '1.6',
+          color: 'rgba(255, 255, 255, 0.6)',
+          padding: '1rem',
+          background: 'rgba(123, 12, 208, 0.1)',
+          borderRadius: '8px',
+          border: '1px solid rgba(123, 12, 208, 0.2)',
+          fontSize: '0.875rem'
+        }}>
+          It's served via IP address 66.33.22.11, by <a href="https://bgp.tools/as/400940" style={{ color: '#E835A0', textDecoration: 'none' }}>ASN 400940</a>, and runs
+          in {consolidateRegions(regions).length} different regions, across 3 different countries,
+          on servers we own.
+        </p>
+
+        <p style={{
+          fontStyle: 'italic',
+          marginBottom: '2rem',
+          lineHeight: '1.6',
+          color: 'rgba(255, 255, 255, 0.5)'
+        }}>
+          Every request to this website can be seen in real-time below. Click the button below to trigger one manually.
+        </p>
+
+        <div style={{
+          padding: '1.5rem',
+          background: 'rgba(123, 12, 208, 0.1)',
+          borderRadius: '8px',
+          border: '1px solid rgba(123, 12, 208, 0.2)'
+        }}>
+          <div style={{
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>
+            Your Region ({REGION_CONSOLIDATION[currentRegion] || currentRegion}): <span style={{ color: '#E835A0', fontWeight: 600 }}>{consolidateRegions(localRegions).find(r => r.region === (REGION_CONSOLIDATION[currentRegion] || currentRegion))?.count ?? 0}</span>
           </div>
           <button
             onClick={incrementCounter}
             disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
             style={{
-              backgroundColor: '#5CC5B9',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.25rem',
+              background: '#7b0cd0',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
               border: 'none',
-              color: 'white',
+              color: '#ffffff',
               cursor: 'pointer',
               opacity: (!ws || ws.readyState !== WebSocket.OPEN || !userLocation) ? 0.5 : 1,
-              fontSize: '0.875rem'
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              transition: 'all 0.2s ease'
             }}
           >
             Increment Counter
           </button>
-          <div style={{ 
-            fontSize: '0.875rem',
-            opacity: 0.5,
-            marginTop: '0.5rem'
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'rgba(255, 255, 255, 0.4)',
+            marginTop: '1rem'
           }}>
             {/* Only show status if we're connected or it's not the initial load */}
             {(!initialConnection.current || status === "connected") && (
@@ -717,12 +747,13 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       </div>
 
       {/* Right Column - Globe */}
-      <div style={{ 
+      <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         background: '#13111C',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        position: 'relative'
       }}>
         <GlobeViz 
           regions={localRegions} 

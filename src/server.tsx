@@ -357,20 +357,33 @@ const server = Bun.serve({
       `<!DOCTYPE html>
         <html>
           <head>
-            <title>jakecooper.me</title>
+            <title>justjake.me</title>
+            <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2313111C'/><circle cx='50' cy='50' r='30' fill='%23E835A0'/></svg>">
             <style>
-              html, 
-              body, 
-              #root, 
+              html,
+              body,
+              #root,
               #__next {
                 margin: 0;
                 padding: 0;
                 background: #13111C !important;
                 min-height: 100vh;
-                color: white;
+                color: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
               }
               * {
                 box-sizing: border-box;
+              }
+              ::selection {
+                background: rgba(232, 53, 160, 0.3);
+                color: #E835A0;
+              }
+              a {
+                color: #E835A0;
+                text-decoration: none;
+              }
+              a:hover {
+                text-decoration: underline;
               }
             </style>
             <script src="/client.${BUILD_TIMESTAMP}.js" type="module" defer></script>
