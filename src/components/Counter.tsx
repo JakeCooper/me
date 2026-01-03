@@ -613,28 +613,32 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '500px 1fr',
-      minHeight: '100vh',
-      background: '#13111C',
-      color: '#ffffff',
-      margin: 0,
-      padding: 0,
-      width: '100vw',
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    }}>
-      {/* Left Column - Content */}
-      <div style={{
-        padding: '3rem',
-        height: '100vh',
-        overflowY: 'auto',
+    <div
+      className="main-layout"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '500px 1fr',
+        minHeight: '100vh',
         background: '#13111C',
-        borderRight: '1px solid rgba(123, 12, 208, 0.2)'
+        color: '#ffffff',
+        margin: 0,
+        padding: 0,
+        width: '100vw',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       }}>
+      {/* Left Column - Content */}
+      <div
+        className="content-column"
+        style={{
+          padding: '3rem',
+          height: '100vh',
+          overflowY: 'auto',
+          background: '#13111C',
+          borderRight: '1px solid rgba(123, 12, 208, 0.2)'
+        }}>
         <h1 style={{
           fontSize: '2.5rem',
           fontWeight: 600,
@@ -746,15 +750,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         </div>
       </div>
 
-      {/* Right Column - Globe */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#13111C',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
+      {/* Right Column - Globe (Bottom on mobile) */}
+      <div
+        className="globe-column"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#13111C',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
         <GlobeViz 
           regions={localRegions} 
           currentRegion={currentRegion} 

@@ -357,6 +357,7 @@ const server = Bun.serve({
       `<!DOCTYPE html>
         <html>
           <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>justjake.me</title>
             <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2313111C'/><circle cx='50' cy='50' r='30' fill='%23E835A0'/></svg>">
             <style>
@@ -384,6 +385,24 @@ const server = Bun.serve({
               }
               a:hover {
                 text-decoration: underline;
+              }
+
+              /* Mobile responsive layout */
+              @media (max-width: 900px) {
+                .main-layout {
+                  grid-template-columns: 1fr !important;
+                  grid-template-rows: auto auto !important;
+                }
+                .content-column {
+                  height: auto !important;
+                  border-right: none !important;
+                  border-bottom: 1px solid rgba(123, 12, 208, 0.2) !important;
+                  padding: 2rem !important;
+                }
+                .globe-column {
+                  height: 500px !important;
+                  min-height: 500px !important;
+                }
               }
             </style>
             <script src="/client.${BUILD_TIMESTAMP}.js" type="module" defer></script>
