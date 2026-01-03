@@ -387,27 +387,58 @@ const server = Bun.serve({
                 text-decoration: underline;
               }
 
+              @keyframes pulse-glow {
+                0%, 100% {
+                  box-shadow: 0 0 20px rgba(123, 12, 208, 0.3), 0 0 40px rgba(232, 53, 160, 0.1);
+                }
+                50% {
+                  box-shadow: 0 0 30px rgba(123, 12, 208, 0.5), 0 0 60px rgba(232, 53, 160, 0.2);
+                }
+              }
+
+              .increment-section {
+                display: none;
+              }
+
+              /* Floating bar - below globe on desktop, bottom on mobile */
+              .floating-bar {
+                display: flex;
+                position: fixed;
+                background: rgba(19, 17, 28, 0.95);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(123, 12, 208, 0.4);
+                padding: 1rem 1.5rem;
+                align-items: center;
+                gap: 1.5rem;
+                z-index: 100;
+                border-radius: 16px;
+                animation: pulse-glow 3s ease-in-out infinite;
+                justify-content: center;
+                /* Desktop: centered below globe */
+                bottom: 2rem;
+                left: 50%;
+                transform: translateX(-50%);
+                margin-left: 250px; /* Half of left column width to center in globe area */
+                max-width: 400px;
+              }
+
               /* Mobile responsive layout */
               @media (max-width: 900px) {
                 .main-layout {
-                  grid-template-columns: 1fr !important;
-                  grid-template-rows: auto 1fr auto !important;
-                  height: 100vh !important;
-                  height: 100dvh !important;
-                  min-height: 100vh !important;
-                  min-height: 100dvh !important;
-                  overflow: hidden !important;
+                  grid-template-columns: 1fr;
+                  grid-template-rows: auto 1fr;
+                  height: 100dvh;
+                  overflow: hidden;
                 }
                 .content-column {
-                  height: auto !important;
-                  max-height: 45vh !important;
-                  max-height: 45dvh !important;
-                  overflow-y: auto !important;
-                  border-right: none !important;
-                  border-bottom: none !important;
-                  padding: 1.5rem !important;
-                  padding-bottom: 0.5rem !important;
-                  position: relative !important;
+                  height: auto;
+                  max-height: 45dvh;
+                  overflow-y: auto;
+                  border-right: none;
+                  padding: 1.5rem;
+                  padding-bottom: 0.5rem;
+                  position: relative;
                 }
                 .content-column::after {
                   content: '';
@@ -421,42 +452,27 @@ const server = Bun.serve({
                   bottom: 0;
                 }
                 .content-column h1 {
-                  font-size: 1.75rem !important;
-                  margin-bottom: 1rem !important;
+                  font-size: 1.75rem;
+                  margin-bottom: 1rem;
                 }
                 .content-column p {
-                  font-size: 0.875rem !important;
-                  margin-bottom: 0.75rem !important;
-                }
-                .increment-section {
-                  display: none !important;
+                  font-size: 0.875rem;
+                  margin-bottom: 0.75rem;
                 }
                 .globe-column {
-                  flex: 1 !important;
-                  min-height: 0 !important;
-                  height: auto !important;
+                  flex: 1;
+                  min-height: 0;
                 }
-                .mobile-floating-bar {
-                  display: flex !important;
+                /* Mobile: bottom bar centered */
+                .floating-bar {
+                  left: 50%;
+                  bottom: calc(1rem + env(safe-area-inset-bottom));
+                  margin-left: 0;
+                  transform: translateX(-50%);
+                  max-width: calc(100% - 2rem);
+                  width: auto;
+                  border-radius: 12px;
                 }
-              }
-
-              .mobile-floating-bar {
-                display: none;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: rgba(19, 17, 28, 0.95);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                border-top: 1px solid rgba(123, 12, 208, 0.3);
-                padding: 1rem 1.5rem;
-                padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-                align-items: center;
-                justify-content: space-between;
-                gap: 1rem;
-                z-index: 100;
               }
             </style>
             <script src="/client.${BUILD_TIMESTAMP}.js" type="module" defer></script>

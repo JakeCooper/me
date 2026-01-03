@@ -703,7 +703,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.6',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          Every request to this website can be seen in real-time below. Click the button below to trigger one manually.
+          Every request to this website can be seen in real-time on the globe.
         </p>
 
         <div
@@ -761,7 +761,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           justifyContent: 'center',
           background: '#13111C',
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          paddingBottom: '80px'
         }}>
         <GlobeViz
           regions={localRegions}
@@ -774,8 +775,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         />
       </div>
 
-      {/* Mobile floating bar */}
-      <div className="mobile-floating-bar">
+      {/* Floating bar - right side on desktop, bottom on mobile */}
+      <div className="floating-bar">
         <div style={{
           fontSize: '0.875rem',
           color: 'rgba(255, 255, 255, 0.7)'
