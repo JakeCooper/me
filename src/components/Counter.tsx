@@ -61,6 +61,7 @@ interface AnimatingConnection {
   endLng: number;
   color: string;
   animationDuration: number;
+  progress: number; // 0 to 1
 }
 
 interface GlobeStyles {
@@ -241,7 +242,7 @@ const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = []
   );
 
   // Persistent connection arcs (dotted, slowly animated)
-  // Exclude connections that are currently animating
+  // Hide connections that are currently being drawn
   const persistentArcs = useMemo(() =>
     connections
       .filter(conn => !animatingIds.has(conn.id))
@@ -268,22 +269,30 @@ const GlobeViz = ({ regions, currentRegion, connections = [], shootingStars = []
     [connections, currentConsolidatedRegion, animatingIds]
   );
 
-  // Animating connection arcs (tracer drawing in)
+  // Animating connection arcs (line drawing itself in)
+  // Uses dash pattern to reveal the arc progressively from start to end
   const animatingArcs = useMemo(() =>
-    animatingConnections.map(conn => ({
-      id: `animating-${conn.id}`,
-      startLat: conn.startLat,
-      startLng: conn.startLng,
-      endLat: conn.endLat,
-      endLng: conn.endLng,
-      color: conn.color,
-      altitude: 0.1,
-      stroke: 1.2,
-      // Single tracer segment that draws the line
-      dashLength: 0.15,
-      dashGap: 0.85,
-      dashAnimateTime: conn.animationDuration,
-    })),
+    animatingConnections.map(conn => {
+      // progress goes 0 to 1, dashLength reveals that portion
+      const revealLength = Math.max(0.01, conn.progress);
+      const hideLength = Math.max(0.01, 1 - conn.progress);
+
+      return {
+        id: `animating-${conn.id}`,
+        // Swap start/end so dash pattern reveals from user towards datacenter
+        startLat: conn.endLat,
+        startLng: conn.endLng,
+        endLat: conn.startLat,
+        endLng: conn.startLng,
+        color: conn.color,
+        altitude: 0.08,
+        stroke: 0.8,
+        // Reveal from start: visible portion grows, hidden portion shrinks
+        dashLength: revealLength,
+        dashGap: hideLength,
+        dashAnimateTime: 0,
+      };
+    }),
     [animatingConnections]
   );
 
@@ -493,6 +502,41 @@ const getArcDistance = (lat1: number, lng1: number, lat2: number, lng2: number):
   return c * 180 / Math.PI; // Return degrees
 };
 
+// Interpolate between two points along a great circle path
+const interpolateGreatCircle = (
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+  t: number // 0 to 1
+): { lat: number; lng: number } => {
+  if (t <= 0) return { lat: lat1, lng: lng1 };
+  if (t >= 1) return { lat: lat2, lng: lng2 };
+
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const toDeg = (rad: number) => rad * 180 / Math.PI;
+
+  const φ1 = toRad(lat1), λ1 = toRad(lng1);
+  const φ2 = toRad(lat2), λ2 = toRad(lng2);
+
+  const d = 2 * Math.asin(Math.sqrt(
+    Math.sin((φ2 - φ1) / 2) ** 2 +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
+  ));
+
+  if (d === 0) return { lat: lat1, lng: lng1 };
+
+  const a = Math.sin((1 - t) * d) / Math.sin(d);
+  const b = Math.sin(t * d) / Math.sin(d);
+
+  const x = a * Math.cos(φ1) * Math.cos(λ1) + b * Math.cos(φ2) * Math.cos(λ2);
+  const y = a * Math.cos(φ1) * Math.sin(λ1) + b * Math.cos(φ2) * Math.sin(λ2);
+  const z = a * Math.sin(φ1) + b * Math.sin(φ2);
+
+  return {
+    lat: toDeg(Math.atan2(z, Math.sqrt(x * x + y * y))),
+    lng: toDeg(Math.atan2(y, x))
+  };
+};
+
 // Calculate animation duration based on arc distance and altitude
 const getAnimationDuration = (lat1: number, lng1: number, lat2: number, lng2: number, altitude: number = 0.1): number => {
   const distance = getArcDistance(lat1, lng1, lat2, lng2);
@@ -535,15 +579,32 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       endLng: conn.to.lng,
       color: '#E835A0',
       animationDuration: duration,
+      progress: 0,
     };
 
     setAnimatingConnections(prev => [...prev, animating]);
 
-    // Remove after animation + time for tracer to fully land
-    const landingBuffer = duration * 0.08;
-    setTimeout(() => {
-      setAnimatingConnections(prev => prev.filter(c => c.id !== conn.id));
-    }, duration + landingBuffer);
+    // Animate progress from 0 to 1
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      setAnimatingConnections(prev =>
+        prev.map(c => c.id === conn.id ? { ...c, progress } : c)
+      );
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Remove after a small delay to ensure smooth transition
+        setTimeout(() => {
+          setAnimatingConnections(prev => prev.filter(c => c.id !== conn.id));
+        }, 50);
+      }
+    };
+
+    requestAnimationFrame(animate);
   }, []);
 
   useEffect(() => {
