@@ -387,21 +387,155 @@ const server = Bun.serve({
                 text-decoration: underline;
               }
 
+              /* Main layout - desktop default */
+              .main-layout {
+                display: grid;
+                grid-template-columns: 500px 1fr;
+                min-height: 100vh;
+                background: #13111C;
+                color: #ffffff;
+                margin: 0;
+                padding: 0;
+                width: 100vw;
+                position: absolute;
+                left: 0;
+                top: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+
+              .content-column {
+                padding: 3rem;
+                height: 100vh;
+                overflow-y: auto;
+                background: #13111C;
+                border-right: 1px solid rgba(123, 12, 208, 0.2);
+              }
+
+              .pull-tab {
+                display: none;
+              }
+
+              .globe-column {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #13111C;
+                overflow: hidden;
+                position: relative;
+                padding-bottom: 80px;
+              }
+
+              @keyframes pulse-glow {
+                0%, 100% {
+                  box-shadow: 0 0 20px rgba(123, 12, 208, 0.3), 0 0 40px rgba(232, 53, 160, 0.1);
+                }
+                50% {
+                  box-shadow: 0 0 30px rgba(123, 12, 208, 0.5), 0 0 60px rgba(232, 53, 160, 0.2);
+                }
+              }
+
+              .increment-section {
+                display: none;
+              }
+
+              /* Floating bar - below globe on desktop, bottom on mobile */
+              .floating-bar {
+                display: flex;
+                position: fixed;
+                background: rgba(19, 17, 28, 0.95);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(123, 12, 208, 0.4);
+                padding: 1rem 1.5rem;
+                align-items: center;
+                gap: 1.5rem;
+                z-index: 100;
+                border-radius: 16px;
+                animation: pulse-glow 3s ease-in-out infinite;
+                justify-content: center;
+                /* Desktop: centered below globe */
+                bottom: 2rem;
+                left: 50%;
+                transform: translateX(-50%);
+                margin-left: 250px; /* Half of left column width to center in globe area */
+                max-width: 400px;
+              }
+
               /* Mobile responsive layout */
               @media (max-width: 900px) {
                 .main-layout {
-                  grid-template-columns: 1fr !important;
-                  grid-template-rows: auto auto !important;
+                  grid-template-columns: 1fr;
+                  grid-template-rows: auto auto 1fr;
+                  min-height: 100dvh;
+                  height: 100dvh;
                 }
                 .content-column {
-                  height: auto !important;
-                  border-right: none !important;
-                  border-bottom: 1px solid rgba(123, 12, 208, 0.2) !important;
-                  padding: 2rem !important;
+                  height: auto;
+                  max-height: 0;
+                  overflow: hidden;
+                  border-right: none;
+                  border-bottom: none;
+                  padding: 0 1.5rem;
+                  transition: max-height 0.3s ease, padding 0.3s ease;
+                }
+                .content-column.expanded {
+                  max-height: 60dvh;
+                  padding: 1.5rem;
+                  padding-bottom: 0;
+                  overflow-y: scroll;
+                  -webkit-overflow-scrolling: touch;
+                }
+                .content-column h1 {
+                  font-size: 1.75rem;
+                  margin-bottom: 1rem;
+                }
+                .content-column p {
+                  font-size: 0.875rem;
+                  margin-bottom: 0.75rem;
+                }
+                .pull-tab {
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 100%;
+                  padding: 8px 0;
+                  background: #13111C;
+                  border: none;
+                  cursor: pointer;
+                }
+                .pull-tab::after {
+                  content: '';
+                  display: block;
+                  width: 12px;
+                  height: 12px;
+                  border-right: 2px solid rgba(123, 12, 208, 0.8);
+                  border-bottom: 2px solid rgba(123, 12, 208, 0.8);
+                  transform: rotate(45deg);
+                  filter: drop-shadow(0 0 6px rgba(123, 12, 208, 0.6));
+                  transition: all 0.3s ease;
+                }
+                .main-layout:has(.content-column.expanded) .pull-tab::after {
+                  transform: rotate(-135deg);
+                }
+                .pull-tab:hover::after,
+                .pull-tab:active::after {
+                  border-color: rgba(232, 53, 160, 0.9);
+                  filter: drop-shadow(0 0 10px rgba(232, 53, 160, 0.8));
                 }
                 .globe-column {
-                  height: 500px !important;
-                  min-height: 500px !important;
+                  flex: 1;
+                  min-height: 0;
+                  padding-bottom: 100px;
+                }
+                /* Mobile: bottom bar centered */
+                .floating-bar {
+                  left: 50%;
+                  bottom: calc(1rem + env(safe-area-inset-bottom));
+                  margin-left: 0;
+                  transform: translateX(-50%);
+                  max-width: calc(100% - 2rem);
+                  width: auto;
+                  border-radius: 12px;
                 }
               }
             </style>

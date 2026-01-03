@@ -428,6 +428,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   const [status, setStatus] = React.useState("loading");
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null);
   const [teamCount, setTeamCount] = React.useState(25);
+  const [contentExpanded, setContentExpanded] = React.useState(false);
   const initialConnection = React.useRef(true);
 
   useEffect(() => {
@@ -613,32 +614,9 @@ export function Counter({ regions, currentRegion }: CounterProps) {
   };
 
   return (
-    <div
-      className="main-layout"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '500px 1fr',
-        minHeight: '100vh',
-        background: '#13111C',
-        color: '#ffffff',
-        margin: 0,
-        padding: 0,
-        width: '100vw',
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-      }}>
+    <div className="main-layout">
       {/* Left Column - Content */}
-      <div
-        className="content-column"
-        style={{
-          padding: '3rem',
-          height: '100vh',
-          overflowY: 'auto',
-          background: '#13111C',
-          borderRight: '1px solid rgba(123, 12, 208, 0.2)'
-        }}>
+      <div className={`content-column ${contentExpanded ? 'expanded' : ''}`}>
         <h1 style={{
           fontSize: '2.5rem',
           fontWeight: 600,
@@ -703,15 +681,17 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.6',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          Every request to this website can be seen in real-time below. Click the button below to trigger one manually.
+          Every request to this website can be seen in real-time on the globe.
         </p>
 
-        <div style={{
-          padding: '1.5rem',
-          background: 'rgba(123, 12, 208, 0.1)',
-          borderRadius: '8px',
-          border: '1px solid rgba(123, 12, 208, 0.2)'
-        }}>
+        <div
+          className="increment-section"
+          style={{
+            padding: '1.5rem',
+            background: 'rgba(123, 12, 208, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(123, 12, 208, 0.2)'
+          }}>
           <div style={{
             marginBottom: '1rem',
             fontSize: '0.875rem',
@@ -748,28 +728,56 @@ export function Counter({ regions, currentRegion }: CounterProps) {
             )}
           </div>
         </div>
+
       </div>
 
+      {/* Pull tab - mobile only */}
+      <button
+        className="pull-tab"
+        onClick={() => setContentExpanded(!contentExpanded)}
+        aria-label={contentExpanded ? "Collapse content" : "Expand content"}
+      />
+
       {/* Right Column - Globe (Bottom on mobile) */}
-      <div
-        className="globe-column"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#13111C',
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
-        <GlobeViz 
-          regions={localRegions} 
-          currentRegion={currentRegion} 
-          connections={connections} 
+      <div className="globe-column">
+        <GlobeViz
+          regions={localRegions}
+          currentRegion={currentRegion}
+          connections={connections}
           userLocation={userLocation}
           connectedUsers={connectedUsers}
           width={1000}
           height={1000}
         />
+      </div>
+
+      {/* Floating bar - right side on desktop, bottom on mobile */}
+      <div className="floating-bar">
+        <div style={{
+          fontSize: '0.875rem',
+          color: 'rgba(255, 255, 255, 0.7)'
+        }}>
+          {REGION_CONSOLIDATION[currentRegion] || currentRegion}: <span style={{ color: '#E835A0', fontWeight: 600 }}>{consolidateRegions(localRegions).find(r => r.region === (REGION_CONSOLIDATION[currentRegion] || currentRegion))?.count ?? 0}</span>
+        </div>
+        <button
+          onClick={incrementCounter}
+          disabled={!ws || ws.readyState !== WebSocket.OPEN || !userLocation}
+          style={{
+            background: '#7b0cd0',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '6px',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            opacity: (!ws || ws.readyState !== WebSocket.OPEN || !userLocation) ? 0.5 : 1,
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Increment
+        </button>
       </div>
     </div>
   );
