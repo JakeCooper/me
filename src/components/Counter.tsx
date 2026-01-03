@@ -617,8 +617,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
       className="main-layout"
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr',
-        gridTemplateRows: 'auto 1fr auto',
+        gridTemplateColumns: '500px 1fr',
         minHeight: '100vh',
         background: '#13111C',
         color: '#ffffff',
@@ -630,13 +629,15 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         top: 0,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       }}>
-      {/* Top Section - Content */}
+      {/* Left Column - Content */}
       <div
         className="content-column"
         style={{
-          padding: '2rem 3rem',
+          padding: '3rem',
+          height: '100vh',
+          overflowY: 'auto',
           background: '#13111C',
-          borderBottom: '1px solid rgba(123, 12, 208, 0.2)'
+          borderRight: '1px solid rgba(123, 12, 208, 0.2)'
         }}>
         <h1 style={{
           fontSize: '2.5rem',
@@ -702,7 +703,7 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           lineHeight: '1.6',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          Every request to this website can be seen in real-time on the globe. Click the button below the globe to trigger one manually.
+          Every request to this website can be seen in real-time on the globe.
         </p>
 
         <div
@@ -760,7 +761,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
           justifyContent: 'center',
           background: '#13111C',
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          paddingBottom: '80px'
         }}>
         <GlobeViz
           regions={localRegions}
@@ -773,8 +775,8 @@ export function Counter({ regions, currentRegion }: CounterProps) {
         />
       </div>
 
-      {/* Mobile floating bar */}
-      <div className="mobile-floating-bar">
+      {/* Floating bar - right side on desktop, bottom on mobile */}
+      <div className="floating-bar">
         <div style={{
           fontSize: '0.875rem',
           color: 'rgba(255, 255, 255, 0.7)'
