@@ -100,26 +100,132 @@ interface Connection {
 const clients = new Set<WebSocket>();
 let subscribersInitialized = false;
 
+// Redis key for storing active connections
+const CONNECTIONS_KEY = 'active-connections';
+
+// Get the Redis client for the current region
+function getRegionalRedisClient(): ReturnType<typeof createClient> | undefined {
+  return redisClients.get(REGION);
+}
+
+// Store a connection in the regional Redis
+async function storeConnectionInRedis(connection: Connection): Promise<void> {
+  const client = getRegionalRedisClient();
+  if (!client) return;
+
+  try {
+    await client.hSet(CONNECTIONS_KEY, connection.id, JSON.stringify(connection));
+  } catch (error) {
+    console.error('Error storing connection in Redis:', error);
+  }
+}
+
+// Remove a connection from the regional Redis
+async function removeConnectionFromRedis(connectionId: string): Promise<void> {
+  const client = getRegionalRedisClient();
+  if (!client) return;
+
+  try {
+    await client.hDel(CONNECTIONS_KEY, connectionId);
+  } catch (error) {
+    console.error('Error removing connection from Redis:', error);
+  }
+}
+
+// Get unique Redis clients (since multiple regions may share the same Redis)
+function getUniqueRedisClients(): ReturnType<typeof createClient>[] {
+  const seen = new Set<string>();
+  const unique: ReturnType<typeof createClient>[] = [];
+
+  // Use the URL mapping to identify unique Redis instances
+  const urlToClient = new Map<string, ReturnType<typeof createClient>>();
+
+  for (const [region, url] of Object.entries(REDIS_MAPPING)) {
+    if (url && !urlToClient.has(url)) {
+      const client = redisClients.get(region);
+      if (client) {
+        urlToClient.set(url, client);
+        unique.push(client);
+      }
+    }
+  }
+
+  return unique;
+}
+
+// Get all connections from ALL Redis instances (aggregate)
+async function getAllConnectionsFromRedis(): Promise<Connection[]> {
+  const allConnections: Connection[] = [];
+  const seenIds = new Set<string>();
+
+  // Only query unique Redis instances (not duplicates)
+  const uniqueClients = getUniqueRedisClients();
+
+  const promises = uniqueClients.map(async (client) => {
+    try {
+      const connectionsHash = await client.hGetAll(CONNECTIONS_KEY);
+      return Object.values(connectionsHash).map(json => JSON.parse(json) as Connection);
+    } catch (error) {
+      console.error('Error fetching connections from Redis:', error);
+      return [];
+    }
+  });
+
+  const results = await Promise.all(promises);
+
+  // Deduplicate by connection ID (shouldn't be needed now, but safe)
+  for (const connections of results) {
+    for (const conn of connections) {
+      if (!seenIds.has(conn.id)) {
+        seenIds.add(conn.id);
+        allConnections.push(conn);
+      }
+    }
+  }
+
+  return allConnections;
+}
+
+// Clear stale connections from a Redis instance
+async function clearStaleConnections(client: ReturnType<typeof createClient>, region: string): Promise<void> {
+  try {
+    const deleted = await client.del(CONNECTIONS_KEY);
+    if (deleted > 0) {
+      console.log(`Cleared ${deleted} stale connections from ${region} Redis`);
+    }
+  } catch (error) {
+    console.error(`Error clearing connections from ${region}:`, error);
+  }
+}
+
 // Setup Redis connections in parallel
 async function setupRedisConnections() {
+  const seenUrls = new Set<string>();
+
   const connectionPromises = Object.entries(REDIS_MAPPING).map(async ([region, url]) => {
     if (!url) {
       console.error(`No Redis URL configured for ${region}`);
       return;
     }
-    
+
     console.log(`Setting up Redis for ${region}...`);
-    
+
     try {
       // Create both client and subscriber in parallel
       const [client, subscriber] = await Promise.all([
         createClient({ url }).connect(),
         createClient({ url }).connect()
       ]);
-      
+
       redisClients.set(region, client);
       subscribers.set(region, subscriber);
-      
+
+      // Clear stale connections on startup (only once per unique Redis instance)
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        await clearStaleConnections(client, region);
+      }
+
       latestCounts.set(region, {
         region,
         count: 0,
@@ -585,14 +691,14 @@ const server = Bun.serve({
     async open(ws) {
       await setupSubscribersIfNeeded();
       clients.add(ws);
-      
-      // Send current state including existing connections
+
+      // Send current state including existing connections from Redis
       const regions = Array.from(latestCounts.values());
-      const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
-      const existingConnections = Array.from(connectedUsers.values()).map(u => u.connection);
-      
-      await ws.send(JSON.stringify({ 
-        type: "state", 
+      const existingConnections = await getAllConnectionsFromRedis();
+      const connectedLocations = existingConnections.map(c => ({ lat: c.from.lat, lng: c.from.lng }));
+
+      await ws.send(JSON.stringify({
+        type: "state",
         regions,
         connectedUsers: connectedLocations,
         connections: existingConnections
@@ -602,14 +708,20 @@ const server = Bun.serve({
     async close(ws) {
       // Get user data before removing
       const userData = connectedUsers.get(ws);
-      
+
       // Remove user when they disconnect
       connectedUsers.delete(ws);
       clients.delete(ws);
-      
+
       if (userData) {
+        // Remove connection from Redis
+        await removeConnectionFromRedis(userData.connection.id);
+
+        // Fetch updated connections from Redis for consistency
+        const allConnections = await getAllConnectionsFromRedis();
+        const connectedLocations = allConnections.map(c => ({ lat: c.from.lat, lng: c.from.lng }));
+
         // Broadcast updated user list and connection removal
-        const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
         const update = {
           type: "userUpdate",
           connectedUsers: connectedLocations,
@@ -618,7 +730,7 @@ const server = Bun.serve({
             connection: userData.connection
           }
         };
-        
+
         const wsMessage = JSON.stringify(update);
         await Promise.all(
           Array.from(clients)
@@ -650,7 +762,7 @@ const server = Bun.serve({
             }
           };
           
-          // Store both location and connection
+          // Store both location and connection locally
           connectedUsers.set(ws, {
             location: {
               lat: data.location.lat,
@@ -658,9 +770,15 @@ const server = Bun.serve({
             },
             connection
           });
-          
+
+          // Store connection in Redis for cross-replica visibility
+          await storeConnectionInRedis(connection);
+
+          // Fetch updated connections from Redis for consistency
+          const allConnections = await getAllConnectionsFromRedis();
+          const connectedLocations = allConnections.map(c => ({ lat: c.from.lat, lng: c.from.lng }));
+
           // Prepare updates
-          const connectedLocations = Array.from(connectedUsers.values()).map(u => u.location);
           const userUpdate = {
             type: "userUpdate",
             connectedUsers: connectedLocations
