@@ -479,11 +479,10 @@ const server = Bun.serve({
                   transition: max-height 0.3s ease, padding 0.3s ease;
                 }
                 .content-column.expanded {
-                  max-height: 60dvh;
+                  max-height: 550px;
                   padding: 1.5rem;
-                  padding-bottom: 0;
-                  overflow-y: scroll;
-                  -webkit-overflow-scrolling: touch;
+                  padding-bottom: 2rem;
+                  overflow: visible;
                 }
                 .content-column h1 {
                   font-size: 1.75rem;
@@ -497,25 +496,34 @@ const server = Bun.serve({
                   display: flex;
                   align-items: center;
                   justify-content: center;
-                  width: 100%;
-                  padding: 8px 0;
-                  background: #13111C;
-                  border: none;
+                  width: 48px;
+                  height: 48px;
+                  position: fixed;
+                  top: 1.5rem;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  background: rgba(19, 17, 28, 0.95);
+                  backdrop-filter: blur(10px);
+                  -webkit-backdrop-filter: blur(10px);
+                  border: 1px solid rgba(123, 12, 208, 0.4);
+                  border-radius: 50%;
                   cursor: pointer;
+                  animation: pulse-glow 3s ease-in-out infinite;
+                  z-index: 100;
                 }
                 .pull-tab::after {
                   content: '';
                   display: block;
-                  width: 12px;
-                  height: 12px;
+                  width: 10px;
+                  height: 10px;
                   border-right: 2px solid rgba(123, 12, 208, 0.8);
                   border-bottom: 2px solid rgba(123, 12, 208, 0.8);
-                  transform: rotate(45deg);
+                  transform: rotate(45deg) translateY(-2px);
                   filter: drop-shadow(0 0 6px rgba(123, 12, 208, 0.6));
                   transition: all 0.3s ease;
                 }
                 .main-layout:has(.content-column.expanded) .pull-tab::after {
-                  transform: rotate(-135deg);
+                  transform: rotate(-135deg) translateY(-2px);
                 }
                 .pull-tab:hover::after,
                 .pull-tab:active::after {
@@ -526,6 +534,13 @@ const server = Bun.serve({
                   flex: 1;
                   min-height: 0;
                   padding-bottom: 100px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  overflow: hidden;
+                }
+                .globe-column > div {
+                  transform: scale(0.75);
                 }
                 /* Mobile: bottom bar centered */
                 .floating-bar {
@@ -536,6 +551,16 @@ const server = Bun.serve({
                   max-width: calc(100% - 2rem);
                   width: auto;
                   border-radius: 12px;
+                }
+              }
+
+              /* Actual phones - smaller screens */
+              @media (max-width: 500px) {
+                .globe-column {
+                  padding-top: 80px;
+                }
+                .globe-column > div {
+                  transform: scale(0.48);
                 }
               }
             </style>
